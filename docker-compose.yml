@@ -3,11 +3,11 @@ version: "3.8"
 services:
   oracle-db:
     build: .
-    image: tuusuario/oracle-db:latest
+    image: gaspergt/oracle-db:latest
     container_name: oracle-db
     ports:
       - "1521:1521"
     environment:
-      ORACLE_PASSWORD: MySecurePass123
+      ORACLE_PASSWORD: simon
       ORACLE_DATABASE: XE
     restart: unless-stopped
