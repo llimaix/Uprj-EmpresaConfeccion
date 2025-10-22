@@ -1,4 +1,5 @@
-FROM gvenzl/oracle-xe:21-slim
+FROM gvenzl/oracle-xe:21-slim-faststart
+
 
 ENV ORACLE_PASSWORD=simon
 ENV ORACLE_DATABASE=XE
