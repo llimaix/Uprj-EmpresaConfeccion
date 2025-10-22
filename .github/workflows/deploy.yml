@@ -2,7 +2,7 @@ name: Build and Deploy to ECS
 
 on:
   push:
-    branches: [ "simon" ]
+    branches: [ "database" ]
 
 jobs:
   build-and-deploy:
