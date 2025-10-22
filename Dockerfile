@@ -1,0 +1,8 @@
+FROM gvenzl/oracle-xe:21-slim
+
+ENV ORACLE_PASSWORD=simon
+ENV ORACLE_DATABASE=XE
+ENV APP_USER=app_user
+ENV APP_PASSWORD=simon
+
+EXPOSE 1521

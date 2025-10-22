@@ -1,0 +1,24 @@
+{
+  "family": "oracle-db-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["EC2"],
+  "cpu": "256",
+  "memory": "512",
+  "containerDefinitions": [
+    {
+      "name": "oracle-db",
+      "image": "tuusuario/oracle-db:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 1521,
+          "hostPort": 1521
+        }
+      ],
+      "environment": [
+        { "name": "ORACLE_PASSWORD", "value": "simon" },
+        { "name": "ORACLE_DATABASE", "value": "XE" }
+      ]
+    }
+  ]
+}
