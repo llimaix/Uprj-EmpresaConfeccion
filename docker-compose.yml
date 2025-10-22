@@ -9,5 +9,13 @@ services:
       - "1521:1521"
     environment:
       ORACLE_PASSWORD: simon
-      ORACLE_DATABASE: XE
+      APP_USER: app_user
+      APP_USER_PASSWORD: simon
+    tmpfs:
+      - /dev/shm
+    volumes:
+      - oracle-data:/opt/oracle/oradata
     restart: unless-stopped
+
+volumes:
+  oracle-data:
