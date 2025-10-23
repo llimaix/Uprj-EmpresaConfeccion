@@ -4,7 +4,7 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "2048",
   "memory": "4096",
-  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT:role/ecsTaskExecutionRole",
+  "executionRoleArn": "arn:aws:iam::851725295463:role/ecsTaskExecutionRole",
   "containerDefinitions": [
     {
       "name": "oracle-db",
