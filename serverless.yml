@@ -4,7 +4,7 @@ frameworkVersion: '3'
 provider:
   name: aws
   runtime: nodejs18.x
-  region: ${env:AWS_REGION, 'us-east-1'}
+  region: us-east-1
   stage: ${env:STAGE, 'dev'}
   memorySize: 256
   timeout: 15
@@ -58,3 +58,18 @@ functions:
       - httpApi:
           path: /ordenes
           method: POST
+
+  inventario-list:
+    handler: src/handlers/inventario.listar
+    events:
+      - httpApi:
+          path: /inventario
+          method: GET
+  
+  ordenes-list:
+    handler: src/handlers/ordenes.listar
+    events:
+      - httpApi:
+          path: /ordenes
+          method: GET
+
