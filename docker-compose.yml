@@ -8,6 +8,6 @@ services:
     ports:
       - "1521:1521"
     environment:
-      ORACLE_PASSWORD: simon
-      APP_USER: app_user
-      APP_USER_PASSWORD: simon
+       ORACLE_PASSWORD: simon
+       APP_USER: app_user
+       APP_USER_PASSWORD: simon
