@@ -9,6 +9,8 @@
       "name": "oracle-db",
       "image": "gaspergt/oracle-db:latest",
       "essential": true,
+      "cpu": 2048,
+      "memory": 4096,
       "portMappings": [
         { "containerPort": 1521, "hostPort": 1521 }
       ],
@@ -23,9 +25,22 @@
           "containerPath": "/opt/oracle/oradata"
         }
       ],
-      "tmpfs": [
-        { "containerPath": "/dev/shm", "size": 512 }
-      ]
+      "linuxParameters": {
+        "tmpfs": [
+          {
+            "containerPath": "/dev/shm",
+            "size": 512
+          }
+        ]
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/oracle-db-task",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
     }
   ],
   "volumes": [
