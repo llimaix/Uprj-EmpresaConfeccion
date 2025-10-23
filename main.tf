@@ -4,7 +4,7 @@ provider "aws" {
 
 # 1. S3 bucket
 resource "aws_s3_bucket" "static_site" {
-  bucket = "app-db"
+  bucket = "app-db-fe"
 
   force_destroy = true  
 
