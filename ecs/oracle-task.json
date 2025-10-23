@@ -1,7 +1,7 @@
 {
   "family": "oracle-db-task",
   "networkMode": "awsvpc",
-  "requiresCompatibilities": ["FARGATE"],
+  "requiresCompatibilities": ["EC2"],
   "cpu": "2048",
   "memory": "4096",
   "executionRoleArn": "arn:aws:iam::851725295463:role/ecsTaskExecutionRole",
@@ -28,9 +28,6 @@
           "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "ecs"
         }
-      },
-      "linuxParameters": {
-        "sharedMemorySize": 512
       }
     }
   ]
