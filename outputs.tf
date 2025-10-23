@@ -1,7 +1,8 @@
-output "s3_website_url" {
-  value = aws_s3_bucket.static_site.website_endpoint
+output "cloudfront_url" {
+  description = "URL del sitio servido por CloudFront"
+  value       = "https://${aws_cloudfront_distribution.cdn.domain_name}"
 }
 
-output "cloudfront_domain_name" {
-  value = aws_cloudfront_distribution.cdn.domain_name
+output "bucket_name" {
+  value = aws_s3_bucket.static_site.id
 }
