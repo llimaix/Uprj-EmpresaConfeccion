@@ -14,9 +14,17 @@ provider:
         - '*'
       allowedHeaders:
         - Content-Type
+        - Authorization
+        - X-Amz-Date
+        - X-Api-Key
+        - X-Amz-Security-Token
       allowedMethods:
         - GET
         - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+        
   environment:
     ORACLE_HOST: ${env:ORACLE_HOST}
     ORACLE_PORT: ${env:ORACLE_PORT, '1521'}
