@@ -1,0 +1,42 @@
+name: Backend - Serverless Deploy
+
+on:
+  push:
+    branches: [ backend ]
+    paths:
+      - "**"
+      - ".github/workflows/backend-deploy-serverless.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ secrets.AWS_REGION }}
+
+      - name: Serverless Deploy
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          STAGE: ${{ secrets.STAGE }}
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_PORT: ${{ secrets.ORACLE_PORT }}
+          ORACLE_SERVICE: ${{ secrets.ORACLE_SERVICE }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+          ORACLE_PASSWORD: ${{ secrets.ORACLE_PASSWORD }}
+        run: npx serverless deploy --verbose

@@ -1,0 +1,19 @@
+{
+  "name": "control-confeccion-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "serverless offline",
+    "deploy": "serverless deploy",
+    "remove": "serverless remove",
+    "lint": "echo \"(opcional)\""
+  },
+  "dependencies": {
+    "oracledb": "^6.4.0"
+  },
+  "devDependencies": {
+    "serverless": "^3.39.0",
+    "serverless-offline": "^13.8.0"
+  }
+}
