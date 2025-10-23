@@ -19,7 +19,10 @@
       "environment": [
         { "name": "ORACLE_PASSWORD", "value": "simon" },
         { "name": "APP_USER", "value": "app_user" },
-        { "name": "APP_USER_PASSWORD", "value": "simon" }
+        { "name": "APP_USER_PASSWORD", "value": "simon" },
+        { "name": "ORACLE_DATABASE", "value": "XE" },
+        { "name": "ORACLE_EDITION", "value": "express" },
+        { "name": "ORACLE_CHARACTERSET", "value": "AL32UTF8" }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
