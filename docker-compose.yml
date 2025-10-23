@@ -11,6 +11,3 @@ services:
       ORACLE_PASSWORD: simon
       APP_USER: app_user
       APP_USER_PASSWORD: simon
-    # tmpfs y volumes removidos para compatibilidad con Fargate
-    # En Fargate, /dev/shm se maneja automáticamente (64MB)
-    # Para persistencia, usar EFS o RDS en producción
