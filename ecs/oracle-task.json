@@ -1,38 +1,26 @@
 {
   "family": "oracle-db-task",
-  "networkMode": "bridge",
-  "requiresCompatibilities": ["EC2"],
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
   "cpu": "2048",
   "memory": "4096",
+  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT:role/ecsTaskExecutionRole",
   "containerDefinitions": [
     {
       "name": "oracle-db",
       "image": "gaspergt/oracle-db:latest",
       "essential": true,
-      "cpu": 2048,
-      "memory": 4096,
       "portMappings": [
-        { "containerPort": 1521, "hostPort": 1521 }
+        {
+          "containerPort": 1521,
+          "protocol": "tcp"
+        }
       ],
       "environment": [
         { "name": "ORACLE_PASSWORD", "value": "simon" },
         { "name": "APP_USER", "value": "app_user" },
         { "name": "APP_USER_PASSWORD", "value": "simon" }
       ],
-      "mountPoints": [
-        {
-          "sourceVolume": "oracle-data",
-          "containerPath": "/opt/oracle/oradata"
-        }
-      ],
-      "linuxParameters": {
-        "tmpfs": [
-          {
-            "containerPath": "/dev/shm",
-            "size": 512
-          }
-        ]
-      },
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
@@ -40,13 +28,10 @@
           "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "ecs"
         }
+      },
+      "linuxParameters": {
+        "sharedMemorySize": 512
       }
-    }
-  ],
-  "volumes": [
-    {
-      "name": "oracle-data",
-      "host": { "sourcePath": "/mnt/oracle-data" }
     }
   ]
 }

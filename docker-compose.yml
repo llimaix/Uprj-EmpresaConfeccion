@@ -11,11 +11,6 @@ services:
       ORACLE_PASSWORD: simon
       APP_USER: app_user
       APP_USER_PASSWORD: simon
-    tmpfs:
-      - /dev/shm
-    volumes:
-      - oracle-data:/opt/oracle/oradata
-    restart: unless-stopped
-
-volumes:
-  oracle-data:
+    # tmpfs y volumes removidos para compatibilidad con Fargate
+    # En Fargate, /dev/shm se maneja automáticamente (64MB)
+    # Para persistencia, usar EFS o RDS en producción
