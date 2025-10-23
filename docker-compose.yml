@@ -4,10 +4,18 @@ services:
   oracle-db:
     build: .
     image: gaspergt/oracle-db:latest
-    container_name: oracle-db
+    container_name: oracle-xe
     ports:
       - "1521:1521"
     environment:
-       ORACLE_PASSWORD: simon
-       APP_USER: app_user
-       APP_USER_PASSWORD: simon
+      ORACLE_PASSWORD: simon
+      APP_USER: app_user
+      APP_USER_PASSWORD: simon
+    tmpfs:
+      - /dev/shm:size=512m
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+    restart: unless-stopped
+
+volumes:
+  oracle-data:

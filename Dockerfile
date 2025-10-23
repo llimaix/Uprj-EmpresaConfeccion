@@ -1,8 +1,7 @@
-FROM gvenzl/oracle-xe:21-slim-faststart
+FROM gvenzl/oracle-xe:21-slim
 
-
+# Variables base (no recrean PDB, solo configuran el usuario principal)
 ENV ORACLE_PASSWORD=simon
-ENV ORACLE_DATABASE=XE
 ENV APP_USER=app_user
 ENV APP_USER_PASSWORD=simon
 

@@ -1,10 +1,10 @@
 {
   "family": "oracle-db-task",
-  "networkMode": "awsvpc",
+  "networkMode": "bridge",
   "requiresCompatibilities": ["EC2"],
   "cpu": "2048",
   "memory": "4096",
-  "executionRoleArn": "arn:aws:iam::851725295463:role/ecsTaskExecutionRole",
+  "executionRoleArn": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/ecsTaskExecutionRole",
   "containerDefinitions": [
     {
       "name": "oracle-db",
@@ -13,17 +13,28 @@
       "portMappings": [
         {
           "containerPort": 1521,
-          "protocol": "tcp"
+          "hostPort": 1521
         }
       ],
       "environment": [
         { "name": "ORACLE_PASSWORD", "value": "simon" },
         { "name": "APP_USER", "value": "app_user" },
-        { "name": "APP_USER_PASSWORD", "value": "simon" },
-        { "name": "ORACLE_DATABASE", "value": "XE" },
-        { "name": "ORACLE_EDITION", "value": "express" },
-        { "name": "ORACLE_CHARACTERSET", "value": "AL32UTF8" }
+        { "name": "APP_USER_PASSWORD", "value": "simon" }
       ],
+      "mountPoints": [
+        {
+          "sourceVolume": "oracle-data",
+          "containerPath": "/opt/oracle/oradata"
+        }
+      ],
+      "linuxParameters": {
+        "tmpfs": [
+          {
+            "containerPath": "/dev/shm",
+            "size": 512
+          }
+        ]
+      },
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
@@ -31,6 +42,14 @@
           "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "ecs"
         }
+      }
+    }
+  ],
+  "volumes": [
+    {
+      "name": "oracle-data",
+      "host": {
+        "sourcePath": "/mnt/oracle-data"
       }
     }
   ]
