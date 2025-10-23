@@ -1,6 +1,6 @@
 {
   "family": "oracle-db-task",
-  "networkMode": "awsvpc",
+  "networkMode": "bridge",
   "requiresCompatibilities": ["EC2"],
   "cpu": "2048",
   "memory": "4096",
@@ -10,15 +10,28 @@
       "image": "gaspergt/oracle-db:latest",
       "essential": true,
       "portMappings": [
-        {
-          "containerPort": 1521,
-          "hostPort": 1521
-        }
+        { "containerPort": 1521, "hostPort": 1521 }
       ],
       "environment": [
         { "name": "ORACLE_PASSWORD", "value": "simon" },
-        { "name": "ORACLE_DATABASE", "value": "XE" }
+        { "name": "APP_USER", "value": "app_user" },
+        { "name": "APP_USER_PASSWORD", "value": "simon" }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "oracle-data",
+          "containerPath": "/opt/oracle/oradata"
+        }
+      ],
+      "tmpfs": [
+        { "containerPath": "/dev/shm", "size": 512 }
       ]
+    }
+  ],
+  "volumes": [
+    {
+      "name": "oracle-data",
+      "host": { "sourcePath": "/mnt/oracle-data" }
     }
   ]
 }
