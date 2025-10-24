@@ -2,26 +2,35 @@ import { query } from '../db.js'
 import { ok, bad } from '../util.js'
 
 // listar todas las órdenes con su cliente y total de items
+// GET /ordenes  → listado con totales
 export const listar = async () => {
   try {
     const sql = `
-      SELECT 
-        o.id_orden,
-        p.nombre AS cliente,
-        o.estado,
-        COUNT(d.id_detalle) AS total_items
-      FROM Orden_Compra o
-      JOIN Persona p ON o.id_cliente = p.id_persona
-      LEFT JOIN Detalle_Orden_Compra d ON d.id_orden = o.id_orden
-      GROUP BY o.id_orden, p.nombre, o.estado
-      ORDER BY o.id_orden DESC
+      SELECT o.id_orden,
+             p.nombre AS cliente,
+             o.estado,
+             NVL(COUNT(d.id_detalle),0) AS total_items
+        FROM orden_compra o
+        JOIN persona p ON p.id_persona = o.id_cliente
+        LEFT JOIN detalle_orden_compra d ON d.id_orden = o.id_orden
+    GROUP BY o.id_orden, p.nombre, o.estado
+    ORDER BY o.id_orden DESC
     `
     const { rows } = await query(sql)
     return ok({ rows })
-  } catch (e) {
-    console.error(e)
-    return bad(e.message)
-  }
+  } catch (e) { return bad(e.message) }
+}
+
+// PUT /ordenes/{id}  → {estado}
+export const actualizarEstado = async (event) => {
+  try {
+    const id = event.pathParameters?.id
+    const { estado } = JSON.parse(event.body || '{}')
+    if (!id || !estado) return bad('id y estado son obligatorios', 400)
+
+    await exec(`UPDATE orden_compra SET estado = :estado WHERE id_orden = :id`, { estado, id })
+    return ok({ id, estado })
+  } catch (e) { return bad(e.message) }
 }
 
 

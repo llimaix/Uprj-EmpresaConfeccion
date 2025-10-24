@@ -102,3 +102,24 @@ functions:
           path: /ordenes
           method: GET
 
+  ordenes-update:
+    handler: src/handlers/ordenes.actualizarEstado
+    events:
+      - httpApi: 
+          path: /ordenes/{id}
+          method: PUT
+
+
+  inventario-mov:
+    handler: src/handlers/inventario.movimiento
+    events:
+      - httpApi: 
+          path: /inventario/mov
+          method: POST
+          
+  reportes-dashboard:
+    handler: src/handlers/reportes.dashboard
+    events:
+      - httpApi: 
+          path: /reportes
+          method: GET
