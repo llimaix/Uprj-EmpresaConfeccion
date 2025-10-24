@@ -1,12 +1,14 @@
-service: control-confeccion-api
+service: control-confeccion
 frameworkVersion: '3'
 
 provider:
   name: aws
   runtime: nodejs18.x
   region: us-east-1
-  stage: prod
- httpApi:
+  stage: ${env:STAGE, 'dev'}
+  memorySize: 256
+  timeout: 15
+  httpApi:
     cors:
       allowedOrigins:
         - '*'
@@ -33,8 +35,6 @@ provider:
     ORACLE_POOL_MIN: '1'
     ORACLE_POOL_MAX: '4'
 
-plugins:
-  - serverless-offline
 functions:
   # =========================
   # Productos
@@ -110,5 +110,3 @@ functions:
 
 plugins:
   - serverless-offline
-
-
