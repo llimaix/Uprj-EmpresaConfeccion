@@ -1,50 +1,87 @@
-import { useEffect, useState } from "react"
-import { api } from "../api"
+import { useEffect, useState } from "react";
+import { api } from "../api.js";
+import InventarioTable from "./InventarioTable";
 
-export default function InventarioView(){
-  const [rows, setRows] = useState([])
-  const [form, setForm] = useState({ id_instalacion: "", id_producto: "", delta: "", motivo: "" })
-  const load = async () => {
-    const { data } = await api.get("/inventario")
-    setRows(data.rows || [])
-  }
-  const mov = async () => {
-    if(!form.id_instalacion || !form.id_producto || !Number(form.delta)){
-      alert("Complete los campos"); return
+export default function InventarioView() {
+  const [inventario, setInventario] = useState([]);
+  const [idInstalacion, setIdInstalacion] = useState("");
+  const [idProducto, setIdProducto] = useState("");
+  const [cantidad, setCantidad] = useState("");
+  const [motivo, setMotivo] = useState("");
+
+  // 🔁 Carga el inventario desde el backend
+  const loadInventario = async () => {
+    try {
+      const { data } = await api.get("/inventario");
+      setInventario(data.rows || []);
+    } catch (err) {
+      console.error("Error al cargar inventario:", err);
+      alert("No se pudo cargar el inventario");
     }
-    await api.post("/inventario/mov", {
-      id_instalacion: Number(form.id_instalacion),
-      id_producto: Number(form.id_producto),
-      delta: Number(form.delta),
-      motivo: form.motivo || undefined
-    })
-    setForm({ id_instalacion:"", id_producto:"", delta:"", motivo:"" })
-    load()
-  }
-  useEffect(()=>{ load() }, [])
+  };
+
+  // ➕ Registrar movimiento (entrada/salida)
+  const registrar = async () => {
+    if (!idInstalacion || !idProducto || !cantidad) {
+      alert("Debe ingresar instalación, producto y cantidad");
+      return;
+    }
+
+    try {
+      await api.post("/mov", {
+        id_instalacion: idInstalacion,
+        id_producto: idProducto,
+        delta: Number(cantidad),
+        motivo,
+      });
+
+      // Limpiar campos
+      setIdInstalacion("");
+      setIdProducto("");
+      setCantidad("");
+      setMotivo("");
+
+      // Recargar datos
+      loadInventario();
+    } catch (err) {
+      console.error("Error al registrar movimiento:", err);
+      alert("Error al registrar movimiento");
+    }
+  };
+
+  useEffect(() => {
+    loadInventario();
+  }, []);
+
   return (
     <div className="card">
       <h3>Inventario</h3>
-      <div style={{display:'flex', gap:'.5rem', marginBottom:'.8rem'}}>
-        <input placeholder="ID Instalación" value={form.id_instalacion} onChange={e=>setForm({...form,id_instalacion:e.target.value})}/>
-        <input placeholder="ID Producto" value={form.id_producto} onChange={e=>setForm({...form,id_producto:e.target.value})}/>
-        <input placeholder="Δ Cantidad (+/-)" value={form.delta} onChange={e=>setForm({...form,delta:e.target.value})}/>
-        <input placeholder="Motivo (opcional)" value={form.motivo} onChange={e=>setForm({...form,motivo:e.target.value})}/>
-        <button onClick={mov}>Registrar movimiento</button>
+
+      <div style={{ display: "flex", gap: ".5rem", marginBottom: "1rem" }}>
+        <input
+          placeholder="ID Instalación"
+          value={idInstalacion}
+          onChange={(e) => setIdInstalacion(e.target.value)}
+        />
+        <input
+          placeholder="ID Producto"
+          value={idProducto}
+          onChange={(e) => setIdProducto(e.target.value)}
+        />
+        <input
+          placeholder="Δ Cantidad (+/-)"
+          value={cantidad}
+          onChange={(e) => setCantidad(e.target.value)}
+        />
+        <input
+          placeholder="Motivo (opcional)"
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+        />
+        <button onClick={registrar}>Registrar movimiento</button>
       </div>
-      <table>
-        <thead><tr><th>Instalación</th><th>Producto</th><th>Tipo</th><th>Cantidad</th></tr></thead>
-        <tbody>
-          {rows.map(r=>(
-            <tr key={r.ID_INVENTARIO}>
-              <td>{r.INSTALACION}</td>
-              <td>{r.PRODUCTO}</td>
-              <td>{r.TIPO}</td>
-              <td>{r.CANTIDAD}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+
+      <InventarioTable data={inventario} />
     </div>
-  )
+  );
 }
