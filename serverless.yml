@@ -9,20 +9,35 @@ provider:
   environment:
     NODE_OPTIONS: --enable-source-maps
     TZ: America/Guatemala
-  httpApi:
+ httpApi:
     cors:
       allowedOrigins:
         - '*'
       allowedHeaders:
         - Content-Type
         - Authorization
+        - X-Amz-Date
+        - X-Api-Key
+        - X-Amz-Security-Token
       allowedMethods:
         - GET
         - POST
         - PUT
         - DELETE
         - OPTIONS
+        
+  environment:
+    ORACLE_HOST: ${env:ORACLE_HOST}
+    ORACLE_PORT: ${env:ORACLE_PORT, '1521'}
+    ORACLE_SERVICE: ${env:ORACLE_SERVICE}
+    ORACLE_USER: ${env:ORACLE_USER}
+    ORACLE_PASSWORD: ${env:ORACLE_PASSWORD}
+    # Opcional: tamaño de pool
+    ORACLE_POOL_MIN: '1'
+    ORACLE_POOL_MAX: '4'
 
+plugins:
+  - serverless-offline
 functions:
   # =========================
   # Productos
@@ -98,3 +113,4 @@ functions:
 
 plugins:
   - serverless-offline
+
