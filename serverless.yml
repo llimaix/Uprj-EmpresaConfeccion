@@ -52,6 +52,27 @@ functions:
       - httpApi:
           path: /productos
           method: GET
+  
+  productos-create:
+    handler: src/handlers/productos.crear
+    events:
+      - httpApi:
+          path: /productos
+          method: POST
+
+  productos-update:
+    handler: src/handlers/productos.actualizar
+    events:
+      - httpApi:
+          path: /productos/{id}
+          method: PUT
+
+  productos-delete:
+    handler: src/handlers/productos.eliminar
+    events:
+      - httpApi:
+          path: /productos/{id}
+          method: DELETE
 
   personas-create:
     handler: src/handlers/personas.crear
