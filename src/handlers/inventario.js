@@ -73,3 +73,24 @@ export const movimiento = async (event) => {
     return bad(e.message)
   }
 }
+
+export const listar = async () => {
+  try {
+    const sql = `
+      SELECT i.id_inventario,
+             n.nombre AS instalacion,
+             p.nombre AS producto,
+             p.tipo,
+             i.cantidad
+        FROM inventario i
+        JOIN instalacion n ON i.id_instalacion = n.id_instalacion
+        JOIN producto p ON i.id_producto = p.id_producto
+       ORDER BY n.nombre, p.nombre
+    `
+    const { rows } = await query(sql)
+    return ok({ rows })
+  } catch (e) {
+    console.error('Error listar inventario:', e)
+    return bad(e.message)
+  }
+}
