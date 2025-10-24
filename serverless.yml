@@ -6,9 +6,6 @@ provider:
   runtime: nodejs18.x
   region: us-east-1
   stage: prod
-  environment:
-    NODE_OPTIONS: --enable-source-maps
-    TZ: America/Guatemala
  httpApi:
     cors:
       allowedOrigins:
@@ -113,4 +110,5 @@ functions:
 
 plugins:
   - serverless-offline
+
 
