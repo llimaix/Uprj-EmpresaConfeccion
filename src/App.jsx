@@ -17,6 +17,9 @@ export default function App() {
       case "ordenes": return <OrdenesView />;
       default: return <ProductosView />;
       case "ordenes": return <OrdenesTable />;
+      case "inventario": return <InventarioView />;
+      case "ordenes": return <OrdenesView />;
+      case "reportes": return <ReportesView />;
       case "productos": return <ProductosCRUD />;
     }
 
