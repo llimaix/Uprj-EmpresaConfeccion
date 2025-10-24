@@ -1,4 +1,3 @@
-import oracledb from "oracledb";
 import { query, exec } from "../db.js";
 import { ok, bad } from "../util.js";
 
@@ -24,63 +23,22 @@ export const listar = async () => {
   }
 };
 
-// ✅ Crear orden nueva
-export const crear = async (event) => {
-  try {
-    const body = JSON.parse(event.body || "{}");
-    const { id_cliente, items } = body;
-
-    if (!id_cliente || !Array.isArray(items) || items.length === 0)
-      return bad("Faltan datos de cliente o items", 400);
-
-    const insertOrden = `
-      INSERT INTO orden_compra (id_orden, id_cliente, estado, fecha)
-      VALUES (seq_orden_compra.NEXTVAL, :id_cliente, 'PENDIENTE', SYSDATE)
-      RETURNING id_orden INTO :id_orden
-    `;
-
-    const result = await exec(insertOrden, {
-      id_cliente,
-      id_orden: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
-    });
-
-    const id_orden = result.outBinds.id_orden[0];
-
-    for (const item of items) {
-      await exec(
-        `INSERT INTO detalle_orden_compra (id_detalle, id_orden, id_producto, cantidad)
-         VALUES (seq_detalle_orden_compra.NEXTVAL, :id_orden, :id_producto, :cantidad)`,
-        {
-          id_orden,
-          id_producto: item.id_producto,
-          cantidad: item.cantidad,
-        }
-      );
-    }
-
-    return ok({ id_orden });
-  } catch (e) {
-    console.error("Error crear orden:", e);
-    return bad(e.message);
-  }
-};
-
-// ✅ Actualizar estado
+// ✅ Cambiar estado de orden (tipo seguro)
 export const actualizar = async (event) => {
   try {
-    const id = event.pathParameters?.id;
+    const id = Number(event.pathParameters?.id);
     const body = JSON.parse(event.body || "{}");
     const { estado } = body;
 
     if (!id || !estado) return bad("Faltan parámetros", 400);
 
-    const update = await exec(
+    const res = await exec(
       `UPDATE orden_compra SET estado = :estado WHERE id_orden = :id`,
       { estado, id }
     );
 
-    if (update.rowsAffected === 0)
-      return bad(`Orden ${id} no encontrada`, 404);
+    if (res.rowsAffected === 0)
+      return bad(`No existe la orden ${id}`, 404);
 
     return ok({ id, estado });
   } catch (e) {
