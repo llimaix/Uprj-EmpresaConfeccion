@@ -1,13 +1,14 @@
-service: control-confeccion
+service: control-confeccion-api
 frameworkVersion: '3'
 
 provider:
   name: aws
   runtime: nodejs18.x
   region: us-east-1
-  stage: ${env:STAGE, 'dev'}
-  memorySize: 256
-  timeout: 15
+  stage: prod
+  environment:
+    NODE_OPTIONS: --enable-source-maps
+    TZ: America/Guatemala
   httpApi:
     cors:
       allowedOrigins:
@@ -15,44 +16,24 @@ provider:
       allowedHeaders:
         - Content-Type
         - Authorization
-        - X-Amz-Date
-        - X-Api-Key
-        - X-Amz-Security-Token
       allowedMethods:
         - GET
         - POST
         - PUT
         - DELETE
         - OPTIONS
-        
-  environment:
-    ORACLE_HOST: ${env:ORACLE_HOST}
-    ORACLE_PORT: ${env:ORACLE_PORT, '1521'}
-    ORACLE_SERVICE: ${env:ORACLE_SERVICE}
-    ORACLE_USER: ${env:ORACLE_USER}
-    ORACLE_PASSWORD: ${env:ORACLE_PASSWORD}
-    # Opcional: tamaño de pool
-    ORACLE_POOL_MIN: '1'
-    ORACLE_POOL_MAX: '4'
-
-plugins:
-  - serverless-offline
 
 functions:
-  health:
-    handler: src/handlers/health.handler
-    events:
-      - httpApi:
-          path: /health
-          method: GET
-
+  # =========================
+  # Productos
+  # =========================
   productos-list:
     handler: src/handlers/productos.listar
     events:
       - httpApi:
           path: /productos
           method: GET
-  
+
   productos-create:
     handler: src/handlers/productos.crear
     events:
@@ -74,12 +55,32 @@ functions:
           path: /productos/{id}
           method: DELETE
 
-  personas-create:
-    handler: src/handlers/personas.crear
+  # =========================
+  # Inventario
+  # =========================
+  inventario-list:
+    handler: src/handlers/inventario.listar
     events:
       - httpApi:
-          path: /personas
+          path: /inventario
+          method: GET
+
+  inventario-mov:
+    handler: src/handlers/inventario.movimiento
+    events:
+      - httpApi:
+          path: /mov
           method: POST
+
+  # =========================
+  # Órdenes
+  # =========================
+  ordenes-list:
+    handler: src/handlers/ordenes.listar
+    events:
+      - httpApi:
+          path: /ordenes
+          method: GET
 
   ordenes-create:
     handler: src/handlers/ordenes.crear
@@ -88,38 +89,12 @@ functions:
           path: /ordenes
           method: POST
 
-  inventario-list:
-    handler: src/handlers/inventario.listar
-    events:
-      - httpApi:
-          path: /inventario
-          method: GET
-  
-  ordenes-list:
-    handler: src/handlers/ordenes.listar
-    events:
-      - httpApi:
-          path: /ordenes
-          method: GET
-
   ordenes-update:
-    handler: src/handlers/ordenes.actualizarEstado
+    handler: src/handlers/ordenes.actualizar
     events:
-      - httpApi: 
+      - httpApi:
           path: /ordenes/{id}
           method: PUT
 
-
-  inventario-mov:
-    handler: src/handlers/inventario.movimiento
-    events:
-      - httpApi: 
-          path: /inventario/mov
-          method: POST
-          
-  reportes-dashboard:
-    handler: src/handlers/reportes.dashboard
-    events:
-      - httpApi: 
-          path: /reportes
-          method: GET
+plugins:
+  - serverless-offline
