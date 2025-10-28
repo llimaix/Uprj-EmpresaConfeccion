@@ -4,7 +4,7 @@ import ProductosView from "./components/ProductosView";
 import InventarioView from "./components/InventarioView";
 import OrdenesView from "./components/OrdenesView";
 import ProductosCRUD from "./components/ProductosCRUD";
-import OrdenesTable from "./components/OrdenesTable";
+import ReportesView from "./components/ReportesView";
 
 import "./styles.css";
 
@@ -13,21 +13,22 @@ export default function App() {
 
   const renderView = () => {
     switch (view) {
-      case "inventario": return <InventarioView />;
-      case "ordenes": return <OrdenesView />;
-      default: return <ProductosView />;
-      case "ordenes": return <OrdenesTable />;
-      case "inventario": return <InventarioView />;
-      case "ordenes": return <OrdenesView />;
-      case "reportes": return <ReportesView />;
-      case "productos": return <ProductosCRUD />;
+      case "inventario": 
+        return <InventarioView />;
+      case "ordenes": 
+        return <OrdenesView />;
+      case "reportes": 
+        return <ReportesView />;
+      case "productos": 
+        return <ProductosCRUD />;
+      default: 
+        return <ProductosCRUD />;
     }
-
   };
 
   return (
     <>
-      <Header onNav={setView} />
+      <Header onNav={setView} currentView={view} />
       <main className="container">{renderView()}</main>
     </>
   );
