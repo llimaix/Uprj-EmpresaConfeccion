@@ -26,11 +26,11 @@ provider:
         - OPTIONS
         
   environment:
-    ORACLE_HOST: ${env:ORACLE_HOST}
+    ORACLE_HOST: ${env:ORACLE_HOST, '54.90.137.23'}
     ORACLE_PORT: ${env:ORACLE_PORT, '1521'}
-    ORACLE_SERVICE: ${env:ORACLE_SERVICE}
-    ORACLE_USER: ${env:ORACLE_USER}
-    ORACLE_PASSWORD: ${env:ORACLE_PASSWORD}
+    ORACLE_SERVICE: ${env:ORACLE_SERVICE, 'XEPDB1'}
+    ORACLE_USER: ${env:ORACLE_USER, 'app_user'}
+    ORACLE_PASSWORD: ${env:ORACLE_PASSWORD, 'simon'}
     # Opcional: tamaño de pool
     ORACLE_POOL_MIN: '1'
     ORACLE_POOL_MAX: '4'
@@ -107,6 +107,241 @@ functions:
       - httpApi:
           path: /ordenes/{id}
           method: PUT
+
+  ordenes-detail:
+    handler: src/handlers/ordenes.obtenerDetalle
+    events:
+      - httpApi:
+          path: /ordenes/{id}
+          method: GET
+
+  # =========================
+  # Reportes
+  # =========================
+  reportes-dashboard:
+    handler: src/handlers/reportes.dashboard
+    events:
+      - httpApi:
+          path: /reportes
+          method: GET
+
+  reportes-instalaciones:
+    handler: src/handlers/reportes.instalaciones
+    events:
+      - httpApi:
+          path: /reportes/instalaciones
+          method: GET
+
+  reportes-tipos:
+    handler: src/handlers/reportes.tiposProductos
+    events:
+      - httpApi:
+          path: /reportes/tipos-productos
+          method: GET
+
+  # =========================
+  # Personas/Clientes
+  # =========================
+  personas-list:
+    handler: src/handlers/personas.listar
+    events:
+      - httpApi:
+          path: /personas
+          method: GET
+
+  personas-create:
+    handler: src/handlers/personas.crear
+    events:
+      - httpApi:
+          path: /personas
+          method: POST
+
+  personas-update:
+    handler: src/handlers/personas.actualizar
+    events:
+      - httpApi:
+          path: /personas/{id}
+          method: PUT
+
+  personas-delete:
+    handler: src/handlers/personas.eliminar
+    events:
+      - httpApi:
+          path: /personas/{id}
+          method: DELETE
+
+  personas-detail:
+    handler: src/handlers/personas.obtenerPorId
+    events:
+      - httpApi:
+          path: /personas/{id}
+          method: GET
+
+  personas-tipos:
+    handler: src/handlers/personas.obtenerTipos
+    events:
+      - httpApi:
+          path: /personas/tipos
+          method: GET
+
+  # =========================
+  # Empleados
+  # =========================
+  empleados-list:
+    handler: src/handlers/empleados.listar
+    events:
+      - httpApi:
+          path: /empleados
+          method: GET
+
+  empleados-create:
+    handler: src/handlers/empleados.crear
+    events:
+      - httpApi:
+          path: /empleados
+          method: POST
+
+  empleados-update:
+    handler: src/handlers/empleados.actualizar
+    events:
+      - httpApi:
+          path: /empleados/{id}
+          method: PUT
+
+  empleados-delete:
+    handler: src/handlers/empleados.eliminar
+    events:
+      - httpApi:
+          path: /empleados/{id}
+          method: DELETE
+
+  empleados-detail:
+    handler: src/handlers/empleados.obtenerPorId
+    events:
+      - httpApi:
+          path: /empleados/{id}
+          method: GET
+
+  empleados-stats:
+    handler: src/handlers/empleados.estadisticas
+    events:
+      - httpApi:
+          path: /empleados/estadisticas
+          method: GET
+
+  # =========================
+  # Instalaciones
+  # =========================
+  instalaciones-list:
+    handler: src/handlers/instalaciones.listar
+    events:
+      - httpApi:
+          path: /instalaciones
+          method: GET
+
+  instalaciones-create:
+    handler: src/handlers/instalaciones.crear
+    events:
+      - httpApi:
+          path: /instalaciones
+          method: POST
+
+  instalaciones-update:
+    handler: src/handlers/instalaciones.actualizar
+    events:
+      - httpApi:
+          path: /instalaciones/{id}
+          method: PUT
+
+  instalaciones-delete:
+    handler: src/handlers/instalaciones.eliminar
+    events:
+      - httpApi:
+          path: /instalaciones/{id}
+          method: DELETE
+
+  instalaciones-detail:
+    handler: src/handlers/instalaciones.obtenerPorId
+    events:
+      - httpApi:
+          path: /instalaciones/{id}
+          method: GET
+
+  instalaciones-tipos:
+    handler: src/handlers/instalaciones.obtenerTipos
+    events:
+      - httpApi:
+          path: /instalaciones/tipos
+          method: GET
+
+  instalaciones-stats:
+    handler: src/handlers/instalaciones.estadisticas
+    events:
+      - httpApi:
+          path: /instalaciones/estadisticas
+          method: GET
+
+  # =========================
+  # Finanzas
+  # =========================
+  finanzas-list:
+    handler: src/handlers/finanzas.listar
+    events:
+      - httpApi:
+          path: /finanzas
+          method: GET
+
+  finanzas-create:
+    handler: src/handlers/finanzas.crear
+    events:
+      - httpApi:
+          path: /finanzas
+          method: POST
+
+  finanzas-update:
+    handler: src/handlers/finanzas.actualizar
+    events:
+      - httpApi:
+          path: /finanzas/{id}
+          method: PUT
+
+  finanzas-delete:
+    handler: src/handlers/finanzas.eliminar
+    events:
+      - httpApi:
+          path: /finanzas/{id}
+          method: DELETE
+
+  finanzas-detail:
+    handler: src/handlers/finanzas.obtenerPorId
+    events:
+      - httpApi:
+          path: /finanzas/{id}
+          method: GET
+
+  finanzas-resumen:
+    handler: src/handlers/finanzas.resumen
+    events:
+      - httpApi:
+          path: /finanzas/resumen
+          method: GET
+
+  finanzas-tipos:
+    handler: src/handlers/finanzas.obtenerTipos
+    events:
+      - httpApi:
+          path: /finanzas/tipos
+          method: GET
+
+  # =========================
+  # Salud
+  # =========================
+  health:
+    handler: src/handlers/health.check
+    events:
+      - httpApi:
+          path: /health
+          method: GET
 
 plugins:
   - serverless-offline

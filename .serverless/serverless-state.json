@@ -1,0 +1,2536 @@
+{
+  "service": {
+    "service": "control-confeccion",
+    "serviceObject": {
+      "name": "control-confeccion"
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "nodejs18.x",
+      "region": "us-east-1",
+      "stage": "dev",
+      "memorySize": 256,
+      "timeout": 15,
+      "httpApi": {
+        "cors": {
+          "allowedOrigins": [
+            "*"
+          ],
+          "allowedHeaders": [
+            "Content-Type",
+            "Authorization",
+            "X-Amz-Date",
+            "X-Api-Key",
+            "X-Amz-Security-Token"
+          ],
+          "allowedMethods": [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "OPTIONS"
+          ]
+        }
+      },
+      "environment": {
+        "ORACLE_HOST": "54.90.137.23",
+        "ORACLE_PORT": "1521",
+        "ORACLE_SERVICE": "XEPDB1",
+        "ORACLE_USER": "app_user",
+        "ORACLE_PASSWORD": "simon",
+        "ORACLE_POOL_MIN": "1",
+        "ORACLE_POOL_MAX": "4"
+      },
+      "versionFunctions": true,
+      "compiledCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                  {
+                    "ServerSideEncryptionByDefault": {
+                      "SSEAlgorithm": "AES256"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "ServerlessDeploymentBucketPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+              "Bucket": {
+                "Ref": "ServerlessDeploymentBucket"
+              },
+              "PolicyDocument": {
+                "Statement": [
+                  {
+                    "Action": "s3:*",
+                    "Effect": "Deny",
+                    "Principal": "*",
+                    "Resource": [
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":s3:::",
+                            {
+                              "Ref": "ServerlessDeploymentBucket"
+                            },
+                            "/*"
+                          ]
+                        ]
+                      },
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":s3:::",
+                            {
+                              "Ref": "ServerlessDeploymentBucket"
+                            }
+                          ]
+                        ]
+                      }
+                    ],
+                    "Condition": {
+                      "Bool": {
+                        "aws:SecureTransport": false
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "ProductosDashlistLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/control-confeccion-dev-productos-list"
+            }
+          },
+          "ProductosDashcreateLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/control-confeccion-dev-productos-create"
+            }
+          },
+          "ProductosDashupdateLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/control-confeccion-dev-productos-update"
+            }
+          },
+          "ProductosDashdeleteLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/control-confeccion-dev-productos-delete"
+            }
+          },
+          "InventarioDashlistLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/control-confeccion-dev-inventario-list"
+            }
+          },
+          "InventarioDashmovLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/control-confeccion-dev-inventario-mov"
+            }
+          },
+          "OrdenesDashlistLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/control-confeccion-dev-ordenes-list"
+            }
+          },
+          "OrdenesDashcreateLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/control-confeccion-dev-ordenes-create"
+            }
+          },
+          "OrdenesDashupdateLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/control-confeccion-dev-ordenes-update"
+            }
+          },
+          "OrdenesDashdetailLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/control-confeccion-dev-ordenes-detail"
+            }
+          },
+          "ReportesDashdashboardLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/control-confeccion-dev-reportes-dashboard"
+            }
+          },
+          "ReportesDashinstalacionesLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/control-confeccion-dev-reportes-instalaciones"
+            }
+          },
+          "ReportesDashtiposLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/control-confeccion-dev-reportes-tipos"
+            }
+          },
+          "HealthLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/control-confeccion-dev-health"
+            }
+          },
+          "IamRoleLambdaExecution": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                        "lambda.amazonaws.com"
+                      ]
+                    },
+                    "Action": [
+                      "sts:AssumeRole"
+                    ]
+                  }
+                ]
+              },
+              "Policies": [
+                {
+                  "PolicyName": {
+                    "Fn::Join": [
+                      "-",
+                      [
+                        "control-confeccion",
+                        "dev",
+                        "lambda"
+                      ]
+                    ]
+                  },
+                  "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:CreateLogStream",
+                          "logs:CreateLogGroup",
+                          "logs:TagResource"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/control-confeccion-dev*:*"
+                          }
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:PutLogEvents"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/control-confeccion-dev*:*:*"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ],
+              "Path": "/",
+              "RoleName": {
+                "Fn::Join": [
+                  "-",
+                  [
+                    "control-confeccion",
+                    "dev",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "lambdaRole"
+                  ]
+                ]
+              }
+            }
+          },
+          "ProductosDashlistLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/control-confeccion/dev/1761712400916-2025-10-29T04:33:20.916Z/control-confeccion.zip"
+              },
+              "Handler": "src/handlers/productos.listar",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "control-confeccion-dev-productos-list",
+              "MemorySize": 256,
+              "Timeout": 15,
+              "Environment": {
+                "Variables": {
+                  "ORACLE_HOST": "54.90.137.23",
+                  "ORACLE_PORT": "1521",
+                  "ORACLE_SERVICE": "XEPDB1",
+                  "ORACLE_USER": "app_user",
+                  "ORACLE_PASSWORD": "simon",
+                  "ORACLE_POOL_MIN": "1",
+                  "ORACLE_POOL_MAX": "4"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "ProductosDashlistLogGroup"
+            ]
+          },
+          "ProductosDashcreateLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/control-confeccion/dev/1761712400916-2025-10-29T04:33:20.916Z/control-confeccion.zip"
+              },
+              "Handler": "src/handlers/productos.crear",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "control-confeccion-dev-productos-create",
+              "MemorySize": 256,
+              "Timeout": 15,
+              "Environment": {
+                "Variables": {
+                  "ORACLE_HOST": "54.90.137.23",
+                  "ORACLE_PORT": "1521",
+                  "ORACLE_SERVICE": "XEPDB1",
+                  "ORACLE_USER": "app_user",
+                  "ORACLE_PASSWORD": "simon",
+                  "ORACLE_POOL_MIN": "1",
+                  "ORACLE_POOL_MAX": "4"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "ProductosDashcreateLogGroup"
+            ]
+          },
+          "ProductosDashupdateLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/control-confeccion/dev/1761712400916-2025-10-29T04:33:20.916Z/control-confeccion.zip"
+              },
+              "Handler": "src/handlers/productos.actualizar",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "control-confeccion-dev-productos-update",
+              "MemorySize": 256,
+              "Timeout": 15,
+              "Environment": {
+                "Variables": {
+                  "ORACLE_HOST": "54.90.137.23",
+                  "ORACLE_PORT": "1521",
+                  "ORACLE_SERVICE": "XEPDB1",
+                  "ORACLE_USER": "app_user",
+                  "ORACLE_PASSWORD": "simon",
+                  "ORACLE_POOL_MIN": "1",
+                  "ORACLE_POOL_MAX": "4"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "ProductosDashupdateLogGroup"
+            ]
+          },
+          "ProductosDashdeleteLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/control-confeccion/dev/1761712400916-2025-10-29T04:33:20.916Z/control-confeccion.zip"
+              },
+              "Handler": "src/handlers/productos.eliminar",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "control-confeccion-dev-productos-delete",
+              "MemorySize": 256,
+              "Timeout": 15,
+              "Environment": {
+                "Variables": {
+                  "ORACLE_HOST": "54.90.137.23",
+                  "ORACLE_PORT": "1521",
+                  "ORACLE_SERVICE": "XEPDB1",
+                  "ORACLE_USER": "app_user",
+                  "ORACLE_PASSWORD": "simon",
+                  "ORACLE_POOL_MIN": "1",
+                  "ORACLE_POOL_MAX": "4"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "ProductosDashdeleteLogGroup"
+            ]
+          },
+          "InventarioDashlistLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/control-confeccion/dev/1761712400916-2025-10-29T04:33:20.916Z/control-confeccion.zip"
+              },
+              "Handler": "src/handlers/inventario.listar",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "control-confeccion-dev-inventario-list",
+              "MemorySize": 256,
+              "Timeout": 15,
+              "Environment": {
+                "Variables": {
+                  "ORACLE_HOST": "54.90.137.23",
+                  "ORACLE_PORT": "1521",
+                  "ORACLE_SERVICE": "XEPDB1",
+                  "ORACLE_USER": "app_user",
+                  "ORACLE_PASSWORD": "simon",
+                  "ORACLE_POOL_MIN": "1",
+                  "ORACLE_POOL_MAX": "4"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "InventarioDashlistLogGroup"
+            ]
+          },
+          "InventarioDashmovLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/control-confeccion/dev/1761712400916-2025-10-29T04:33:20.916Z/control-confeccion.zip"
+              },
+              "Handler": "src/handlers/inventario.movimiento",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "control-confeccion-dev-inventario-mov",
+              "MemorySize": 256,
+              "Timeout": 15,
+              "Environment": {
+                "Variables": {
+                  "ORACLE_HOST": "54.90.137.23",
+                  "ORACLE_PORT": "1521",
+                  "ORACLE_SERVICE": "XEPDB1",
+                  "ORACLE_USER": "app_user",
+                  "ORACLE_PASSWORD": "simon",
+                  "ORACLE_POOL_MIN": "1",
+                  "ORACLE_POOL_MAX": "4"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "InventarioDashmovLogGroup"
+            ]
+          },
+          "OrdenesDashlistLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/control-confeccion/dev/1761712400916-2025-10-29T04:33:20.916Z/control-confeccion.zip"
+              },
+              "Handler": "src/handlers/ordenes.listar",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "control-confeccion-dev-ordenes-list",
+              "MemorySize": 256,
+              "Timeout": 15,
+              "Environment": {
+                "Variables": {
+                  "ORACLE_HOST": "54.90.137.23",
+                  "ORACLE_PORT": "1521",
+                  "ORACLE_SERVICE": "XEPDB1",
+                  "ORACLE_USER": "app_user",
+                  "ORACLE_PASSWORD": "simon",
+                  "ORACLE_POOL_MIN": "1",
+                  "ORACLE_POOL_MAX": "4"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "OrdenesDashlistLogGroup"
+            ]
+          },
+          "OrdenesDashcreateLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/control-confeccion/dev/1761712400916-2025-10-29T04:33:20.916Z/control-confeccion.zip"
+              },
+              "Handler": "src/handlers/ordenes.crear",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "control-confeccion-dev-ordenes-create",
+              "MemorySize": 256,
+              "Timeout": 15,
+              "Environment": {
+                "Variables": {
+                  "ORACLE_HOST": "54.90.137.23",
+                  "ORACLE_PORT": "1521",
+                  "ORACLE_SERVICE": "XEPDB1",
+                  "ORACLE_USER": "app_user",
+                  "ORACLE_PASSWORD": "simon",
+                  "ORACLE_POOL_MIN": "1",
+                  "ORACLE_POOL_MAX": "4"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "OrdenesDashcreateLogGroup"
+            ]
+          },
+          "OrdenesDashupdateLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/control-confeccion/dev/1761712400916-2025-10-29T04:33:20.916Z/control-confeccion.zip"
+              },
+              "Handler": "src/handlers/ordenes.actualizar",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "control-confeccion-dev-ordenes-update",
+              "MemorySize": 256,
+              "Timeout": 15,
+              "Environment": {
+                "Variables": {
+                  "ORACLE_HOST": "54.90.137.23",
+                  "ORACLE_PORT": "1521",
+                  "ORACLE_SERVICE": "XEPDB1",
+                  "ORACLE_USER": "app_user",
+                  "ORACLE_PASSWORD": "simon",
+                  "ORACLE_POOL_MIN": "1",
+                  "ORACLE_POOL_MAX": "4"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "OrdenesDashupdateLogGroup"
+            ]
+          },
+          "OrdenesDashdetailLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/control-confeccion/dev/1761712400916-2025-10-29T04:33:20.916Z/control-confeccion.zip"
+              },
+              "Handler": "src/handlers/ordenes.obtenerDetalle",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "control-confeccion-dev-ordenes-detail",
+              "MemorySize": 256,
+              "Timeout": 15,
+              "Environment": {
+                "Variables": {
+                  "ORACLE_HOST": "54.90.137.23",
+                  "ORACLE_PORT": "1521",
+                  "ORACLE_SERVICE": "XEPDB1",
+                  "ORACLE_USER": "app_user",
+                  "ORACLE_PASSWORD": "simon",
+                  "ORACLE_POOL_MIN": "1",
+                  "ORACLE_POOL_MAX": "4"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "OrdenesDashdetailLogGroup"
+            ]
+          },
+          "ReportesDashdashboardLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/control-confeccion/dev/1761712400916-2025-10-29T04:33:20.916Z/control-confeccion.zip"
+              },
+              "Handler": "src/handlers/reportes.dashboard",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "control-confeccion-dev-reportes-dashboard",
+              "MemorySize": 256,
+              "Timeout": 15,
+              "Environment": {
+                "Variables": {
+                  "ORACLE_HOST": "54.90.137.23",
+                  "ORACLE_PORT": "1521",
+                  "ORACLE_SERVICE": "XEPDB1",
+                  "ORACLE_USER": "app_user",
+                  "ORACLE_PASSWORD": "simon",
+                  "ORACLE_POOL_MIN": "1",
+                  "ORACLE_POOL_MAX": "4"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "ReportesDashdashboardLogGroup"
+            ]
+          },
+          "ReportesDashinstalacionesLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/control-confeccion/dev/1761712400916-2025-10-29T04:33:20.916Z/control-confeccion.zip"
+              },
+              "Handler": "src/handlers/reportes.instalaciones",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "control-confeccion-dev-reportes-instalaciones",
+              "MemorySize": 256,
+              "Timeout": 15,
+              "Environment": {
+                "Variables": {
+                  "ORACLE_HOST": "54.90.137.23",
+                  "ORACLE_PORT": "1521",
+                  "ORACLE_SERVICE": "XEPDB1",
+                  "ORACLE_USER": "app_user",
+                  "ORACLE_PASSWORD": "simon",
+                  "ORACLE_POOL_MIN": "1",
+                  "ORACLE_POOL_MAX": "4"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "ReportesDashinstalacionesLogGroup"
+            ]
+          },
+          "ReportesDashtiposLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/control-confeccion/dev/1761712400916-2025-10-29T04:33:20.916Z/control-confeccion.zip"
+              },
+              "Handler": "src/handlers/reportes.tiposProductos",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "control-confeccion-dev-reportes-tipos",
+              "MemorySize": 256,
+              "Timeout": 15,
+              "Environment": {
+                "Variables": {
+                  "ORACLE_HOST": "54.90.137.23",
+                  "ORACLE_PORT": "1521",
+                  "ORACLE_SERVICE": "XEPDB1",
+                  "ORACLE_USER": "app_user",
+                  "ORACLE_PASSWORD": "simon",
+                  "ORACLE_POOL_MIN": "1",
+                  "ORACLE_POOL_MAX": "4"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "ReportesDashtiposLogGroup"
+            ]
+          },
+          "HealthLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/control-confeccion/dev/1761712400916-2025-10-29T04:33:20.916Z/control-confeccion.zip"
+              },
+              "Handler": "src/handlers/health.check",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "control-confeccion-dev-health",
+              "MemorySize": 256,
+              "Timeout": 15,
+              "Environment": {
+                "Variables": {
+                  "ORACLE_HOST": "54.90.137.23",
+                  "ORACLE_PORT": "1521",
+                  "ORACLE_SERVICE": "XEPDB1",
+                  "ORACLE_USER": "app_user",
+                  "ORACLE_PASSWORD": "simon",
+                  "ORACLE_POOL_MIN": "1",
+                  "ORACLE_POOL_MAX": "4"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "HealthLogGroup"
+            ]
+          },
+          "ProductosDashlistLambdaVersionY6z9YGA35QkQaSm1RAfupp13uf24gMEYWIfkQHwRI": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "ProductosDashlistLambdaFunction"
+              },
+              "CodeSha256": "/UEC7neGZ0Sf84Fz8VT282jNircxv0ZopDjPMTmNNgM="
+            }
+          },
+          "ProductosDashcreateLambdaVersionPJf1oIuf55LZsfEnJe15dXlGfeEKZAWfUeUhdlnQDD8": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "ProductosDashcreateLambdaFunction"
+              },
+              "CodeSha256": "/UEC7neGZ0Sf84Fz8VT282jNircxv0ZopDjPMTmNNgM="
+            }
+          },
+          "ProductosDashupdateLambdaVersionknWphu0oaIoNmI1OEDhZDmgeE6tuHjUP8xHLWBDeUs": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "ProductosDashupdateLambdaFunction"
+              },
+              "CodeSha256": "/UEC7neGZ0Sf84Fz8VT282jNircxv0ZopDjPMTmNNgM="
+            }
+          },
+          "ProductosDashdeleteLambdaVersionmLofoRYYFosKWqGcVFALq6acPrMHPNOM6sFqSC4": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "ProductosDashdeleteLambdaFunction"
+              },
+              "CodeSha256": "/UEC7neGZ0Sf84Fz8VT282jNircxv0ZopDjPMTmNNgM="
+            }
+          },
+          "InventarioDashlistLambdaVersionxVnnAE2YjnPtNS1Mve4LlrSGvlOuYYirvC9CIWYBY": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "InventarioDashlistLambdaFunction"
+              },
+              "CodeSha256": "/UEC7neGZ0Sf84Fz8VT282jNircxv0ZopDjPMTmNNgM="
+            }
+          },
+          "InventarioDashmovLambdaVersionIWvtNDmty5TDZGvXrjmXRh30vFK3EQOhnn4jqP0io": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "InventarioDashmovLambdaFunction"
+              },
+              "CodeSha256": "/UEC7neGZ0Sf84Fz8VT282jNircxv0ZopDjPMTmNNgM="
+            }
+          },
+          "OrdenesDashlistLambdaVersion8c73elFk0y9nyPwQPPahsUJcFGUCf79fo8gmfDe2s": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "OrdenesDashlistLambdaFunction"
+              },
+              "CodeSha256": "/UEC7neGZ0Sf84Fz8VT282jNircxv0ZopDjPMTmNNgM="
+            }
+          },
+          "OrdenesDashcreateLambdaVersionOnZbWByvH486Ie2g4z2B0hC5M5m7sJwyBv6aVhnP7L4": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "OrdenesDashcreateLambdaFunction"
+              },
+              "CodeSha256": "/UEC7neGZ0Sf84Fz8VT282jNircxv0ZopDjPMTmNNgM="
+            }
+          },
+          "OrdenesDashupdateLambdaVersionv0qAarpVkhpiWhbMXDGldj01OCFvGjWpKsQHeBoMybc": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "OrdenesDashupdateLambdaFunction"
+              },
+              "CodeSha256": "/UEC7neGZ0Sf84Fz8VT282jNircxv0ZopDjPMTmNNgM="
+            }
+          },
+          "OrdenesDashdetailLambdaVersionj9UlS993i49WzcBLA01hH5UY8d8VEWXPw7kgGBZVgk": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "OrdenesDashdetailLambdaFunction"
+              },
+              "CodeSha256": "/UEC7neGZ0Sf84Fz8VT282jNircxv0ZopDjPMTmNNgM="
+            }
+          },
+          "ReportesDashdashboardLambdaVersionlMXZt1u2DNvqvtmn6eNMHmIDxlUURaUKWsm1Ra8Bg": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "ReportesDashdashboardLambdaFunction"
+              },
+              "CodeSha256": "/UEC7neGZ0Sf84Fz8VT282jNircxv0ZopDjPMTmNNgM="
+            }
+          },
+          "ReportesDashinstalacionesLambdaVersiondxpvI3lye09btzF0jZsxnfcfSkxIjBqrlReMzrKY": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "ReportesDashinstalacionesLambdaFunction"
+              },
+              "CodeSha256": "/UEC7neGZ0Sf84Fz8VT282jNircxv0ZopDjPMTmNNgM="
+            }
+          },
+          "ReportesDashtiposLambdaVersiononmd5QqDosx7FApLsGgsWn4NpTQRPXvXJUIJuRAnCU": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "ReportesDashtiposLambdaFunction"
+              },
+              "CodeSha256": "/UEC7neGZ0Sf84Fz8VT282jNircxv0ZopDjPMTmNNgM="
+            }
+          },
+          "HealthLambdaVersion6mYkVBtqlQt7r5AClq9A6WpqYvygArcER7s4GTdRFI": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "HealthLambdaFunction"
+              },
+              "CodeSha256": "/UEC7neGZ0Sf84Fz8VT282jNircxv0ZopDjPMTmNNgM="
+            }
+          },
+          "HttpApi": {
+            "Type": "AWS::ApiGatewayV2::Api",
+            "Properties": {
+              "Name": "dev-control-confeccion",
+              "ProtocolType": "HTTP",
+              "CorsConfiguration": {
+                "AllowHeaders": [
+                  "Content-Type",
+                  "Authorization",
+                  "X-Amz-Date",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token"
+                ],
+                "AllowMethods": [
+                  "GET",
+                  "POST",
+                  "PUT",
+                  "DELETE",
+                  "OPTIONS"
+                ],
+                "AllowOrigins": [
+                  "*"
+                ]
+              }
+            }
+          },
+          "HttpApiStage": {
+            "Type": "AWS::ApiGatewayV2::Stage",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "StageName": "$default",
+              "AutoDeploy": true,
+              "DefaultRouteSettings": {
+                "DetailedMetricsEnabled": false
+              }
+            }
+          },
+          "ProductosDashlistLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "ProductosDashlistLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationProductosDashlist": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"ProductosDashlistLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRouteGetProductos": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "GET /productos",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationProductosDashlist"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationProductosDashlist"
+          },
+          "ProductosDashcreateLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "ProductosDashcreateLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationProductosDashcreate": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"ProductosDashcreateLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRoutePostProductos": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "POST /productos",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationProductosDashcreate"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationProductosDashcreate"
+          },
+          "ProductosDashupdateLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "ProductosDashupdateLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationProductosDashupdate": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"ProductosDashupdateLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRoutePutProductosIdVar": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "PUT /productos/{id}",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationProductosDashupdate"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationProductosDashupdate"
+          },
+          "ProductosDashdeleteLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "ProductosDashdeleteLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationProductosDashdelete": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"ProductosDashdeleteLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRouteDeleteProductosIdVar": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "DELETE /productos/{id}",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationProductosDashdelete"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationProductosDashdelete"
+          },
+          "InventarioDashlistLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "InventarioDashlistLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationInventarioDashlist": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"InventarioDashlistLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRouteGetInventario": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "GET /inventario",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationInventarioDashlist"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationInventarioDashlist"
+          },
+          "InventarioDashmovLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "InventarioDashmovLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationInventarioDashmov": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"InventarioDashmovLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRoutePostMov": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "POST /mov",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationInventarioDashmov"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationInventarioDashmov"
+          },
+          "OrdenesDashlistLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "OrdenesDashlistLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationOrdenesDashlist": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"OrdenesDashlistLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRouteGetOrdenes": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "GET /ordenes",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationOrdenesDashlist"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationOrdenesDashlist"
+          },
+          "OrdenesDashcreateLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "OrdenesDashcreateLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationOrdenesDashcreate": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"OrdenesDashcreateLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRoutePostOrdenes": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "POST /ordenes",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationOrdenesDashcreate"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationOrdenesDashcreate"
+          },
+          "OrdenesDashupdateLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "OrdenesDashupdateLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationOrdenesDashupdate": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"OrdenesDashupdateLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRoutePutOrdenesIdVar": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "PUT /ordenes/{id}",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationOrdenesDashupdate"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationOrdenesDashupdate"
+          },
+          "OrdenesDashdetailLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "OrdenesDashdetailLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationOrdenesDashdetail": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"OrdenesDashdetailLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRouteGetOrdenesIdVar": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "GET /ordenes/{id}",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationOrdenesDashdetail"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationOrdenesDashdetail"
+          },
+          "ReportesDashdashboardLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "ReportesDashdashboardLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationReportesDashdashboard": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"ReportesDashdashboardLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRouteGetReportes": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "GET /reportes",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationReportesDashdashboard"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationReportesDashdashboard"
+          },
+          "ReportesDashinstalacionesLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "ReportesDashinstalacionesLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationReportesDashinstalaciones": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"ReportesDashinstalacionesLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRouteGetReportesInstalaciones": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "GET /reportes/instalaciones",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationReportesDashinstalaciones"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationReportesDashinstalaciones"
+          },
+          "ReportesDashtiposLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "ReportesDashtiposLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationReportesDashtipos": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"ReportesDashtiposLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRouteGetReportesTiposDashproductos": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "GET /reportes/tipos-productos",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationReportesDashtipos"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationReportesDashtipos"
+          },
+          "HealthLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "HealthLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationHealth": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"HealthLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRouteGetHealth": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "GET /health",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationHealth"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationHealth"
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-ServerlessDeploymentBucketName"
+            }
+          },
+          "ProductosDashlistLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "ProductosDashlistLambdaVersionY6z9YGA35QkQaSm1RAfupp13uf24gMEYWIfkQHwRI"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-ProductosDashlistLambdaFunctionQualifiedArn"
+            }
+          },
+          "ProductosDashcreateLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "ProductosDashcreateLambdaVersionPJf1oIuf55LZsfEnJe15dXlGfeEKZAWfUeUhdlnQDD8"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-ProductosDashcreateLambdaFunctionQualifiedArn"
+            }
+          },
+          "ProductosDashupdateLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "ProductosDashupdateLambdaVersionknWphu0oaIoNmI1OEDhZDmgeE6tuHjUP8xHLWBDeUs"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-ProductosDashupdateLambdaFunctionQualifiedArn"
+            }
+          },
+          "ProductosDashdeleteLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "ProductosDashdeleteLambdaVersionmLofoRYYFosKWqGcVFALq6acPrMHPNOM6sFqSC4"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-ProductosDashdeleteLambdaFunctionQualifiedArn"
+            }
+          },
+          "InventarioDashlistLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "InventarioDashlistLambdaVersionxVnnAE2YjnPtNS1Mve4LlrSGvlOuYYirvC9CIWYBY"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-InventarioDashlistLambdaFunctionQualifiedArn"
+            }
+          },
+          "InventarioDashmovLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "InventarioDashmovLambdaVersionIWvtNDmty5TDZGvXrjmXRh30vFK3EQOhnn4jqP0io"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-InventarioDashmovLambdaFunctionQualifiedArn"
+            }
+          },
+          "OrdenesDashlistLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "OrdenesDashlistLambdaVersion8c73elFk0y9nyPwQPPahsUJcFGUCf79fo8gmfDe2s"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-OrdenesDashlistLambdaFunctionQualifiedArn"
+            }
+          },
+          "OrdenesDashcreateLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "OrdenesDashcreateLambdaVersionOnZbWByvH486Ie2g4z2B0hC5M5m7sJwyBv6aVhnP7L4"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-OrdenesDashcreateLambdaFunctionQualifiedArn"
+            }
+          },
+          "OrdenesDashupdateLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "OrdenesDashupdateLambdaVersionv0qAarpVkhpiWhbMXDGldj01OCFvGjWpKsQHeBoMybc"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-OrdenesDashupdateLambdaFunctionQualifiedArn"
+            }
+          },
+          "OrdenesDashdetailLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "OrdenesDashdetailLambdaVersionj9UlS993i49WzcBLA01hH5UY8d8VEWXPw7kgGBZVgk"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-OrdenesDashdetailLambdaFunctionQualifiedArn"
+            }
+          },
+          "ReportesDashdashboardLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "ReportesDashdashboardLambdaVersionlMXZt1u2DNvqvtmn6eNMHmIDxlUURaUKWsm1Ra8Bg"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-ReportesDashdashboardLambdaFunctionQualifiedArn"
+            }
+          },
+          "ReportesDashinstalacionesLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "ReportesDashinstalacionesLambdaVersiondxpvI3lye09btzF0jZsxnfcfSkxIjBqrlReMzrKY"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-ReportesDashinstalacionesLambdaFunctionQualifiedArn"
+            }
+          },
+          "ReportesDashtiposLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "ReportesDashtiposLambdaVersiononmd5QqDosx7FApLsGgsWn4NpTQRPXvXJUIJuRAnCU"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-ReportesDashtiposLambdaFunctionQualifiedArn"
+            }
+          },
+          "HealthLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "HealthLambdaVersion6mYkVBtqlQt7r5AClq9A6WpqYvygArcER7s4GTdRFI"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-HealthLambdaFunctionQualifiedArn"
+            }
+          },
+          "HttpApiId": {
+            "Description": "Id of the HTTP API",
+            "Value": {
+              "Ref": "HttpApi"
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-HttpApiId"
+            }
+          },
+          "HttpApiUrl": {
+            "Description": "URL of the HTTP API",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Ref": "HttpApi"
+                  },
+                  ".execute-api.",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ".",
+                  {
+                    "Ref": "AWS::URLSuffix"
+                  }
+                ]
+              ]
+            },
+            "Export": {
+              "Name": "sls-control-confeccion-dev-HttpApiUrl"
+            }
+          }
+        }
+      },
+      "coreCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                  {
+                    "ServerSideEncryptionByDefault": {
+                      "SSEAlgorithm": "AES256"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "ServerlessDeploymentBucketPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+              "Bucket": {
+                "Ref": "ServerlessDeploymentBucket"
+              },
+              "PolicyDocument": {
+                "Statement": [
+                  {
+                    "Action": "s3:*",
+                    "Effect": "Deny",
+                    "Principal": "*",
+                    "Resource": [
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":s3:::",
+                            {
+                              "Ref": "ServerlessDeploymentBucket"
+                            },
+                            "/*"
+                          ]
+                        ]
+                      },
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":s3:::",
+                            {
+                              "Ref": "ServerlessDeploymentBucket"
+                            }
+                          ]
+                        ]
+                      }
+                    ],
+                    "Condition": {
+                      "Bool": {
+                        "aws:SecureTransport": false
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            }
+          }
+        }
+      },
+      "vpc": {}
+    },
+    "plugins": [
+      "serverless-offline"
+    ],
+    "pluginsData": {},
+    "functions": {
+      "productos-list": {
+        "handler": "src/handlers/productos.listar",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/productos",
+              "method": "GET"
+            },
+            "resolvedMethod": "GET",
+            "resolvedPath": "/productos"
+          }
+        ],
+        "name": "control-confeccion-dev-productos-list",
+        "package": {},
+        "memory": 256,
+        "timeout": 15,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "ProductosDashlistLambdaVersionY6z9YGA35QkQaSm1RAfupp13uf24gMEYWIfkQHwRI"
+      },
+      "productos-create": {
+        "handler": "src/handlers/productos.crear",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/productos",
+              "method": "POST"
+            },
+            "resolvedMethod": "POST",
+            "resolvedPath": "/productos"
+          }
+        ],
+        "name": "control-confeccion-dev-productos-create",
+        "package": {},
+        "memory": 256,
+        "timeout": 15,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "ProductosDashcreateLambdaVersionPJf1oIuf55LZsfEnJe15dXlGfeEKZAWfUeUhdlnQDD8"
+      },
+      "productos-update": {
+        "handler": "src/handlers/productos.actualizar",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/productos/{id}",
+              "method": "PUT"
+            },
+            "resolvedMethod": "PUT",
+            "resolvedPath": "/productos/{id}"
+          }
+        ],
+        "name": "control-confeccion-dev-productos-update",
+        "package": {},
+        "memory": 256,
+        "timeout": 15,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "ProductosDashupdateLambdaVersionknWphu0oaIoNmI1OEDhZDmgeE6tuHjUP8xHLWBDeUs"
+      },
+      "productos-delete": {
+        "handler": "src/handlers/productos.eliminar",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/productos/{id}",
+              "method": "DELETE"
+            },
+            "resolvedMethod": "DELETE",
+            "resolvedPath": "/productos/{id}"
+          }
+        ],
+        "name": "control-confeccion-dev-productos-delete",
+        "package": {},
+        "memory": 256,
+        "timeout": 15,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "ProductosDashdeleteLambdaVersionmLofoRYYFosKWqGcVFALq6acPrMHPNOM6sFqSC4"
+      },
+      "inventario-list": {
+        "handler": "src/handlers/inventario.listar",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/inventario",
+              "method": "GET"
+            },
+            "resolvedMethod": "GET",
+            "resolvedPath": "/inventario"
+          }
+        ],
+        "name": "control-confeccion-dev-inventario-list",
+        "package": {},
+        "memory": 256,
+        "timeout": 15,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "InventarioDashlistLambdaVersionxVnnAE2YjnPtNS1Mve4LlrSGvlOuYYirvC9CIWYBY"
+      },
+      "inventario-mov": {
+        "handler": "src/handlers/inventario.movimiento",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/mov",
+              "method": "POST"
+            },
+            "resolvedMethod": "POST",
+            "resolvedPath": "/mov"
+          }
+        ],
+        "name": "control-confeccion-dev-inventario-mov",
+        "package": {},
+        "memory": 256,
+        "timeout": 15,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "InventarioDashmovLambdaVersionIWvtNDmty5TDZGvXrjmXRh30vFK3EQOhnn4jqP0io"
+      },
+      "ordenes-list": {
+        "handler": "src/handlers/ordenes.listar",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/ordenes",
+              "method": "GET"
+            },
+            "resolvedMethod": "GET",
+            "resolvedPath": "/ordenes"
+          }
+        ],
+        "name": "control-confeccion-dev-ordenes-list",
+        "package": {},
+        "memory": 256,
+        "timeout": 15,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "OrdenesDashlistLambdaVersion8c73elFk0y9nyPwQPPahsUJcFGUCf79fo8gmfDe2s"
+      },
+      "ordenes-create": {
+        "handler": "src/handlers/ordenes.crear",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/ordenes",
+              "method": "POST"
+            },
+            "resolvedMethod": "POST",
+            "resolvedPath": "/ordenes"
+          }
+        ],
+        "name": "control-confeccion-dev-ordenes-create",
+        "package": {},
+        "memory": 256,
+        "timeout": 15,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "OrdenesDashcreateLambdaVersionOnZbWByvH486Ie2g4z2B0hC5M5m7sJwyBv6aVhnP7L4"
+      },
+      "ordenes-update": {
+        "handler": "src/handlers/ordenes.actualizar",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/ordenes/{id}",
+              "method": "PUT"
+            },
+            "resolvedMethod": "PUT",
+            "resolvedPath": "/ordenes/{id}"
+          }
+        ],
+        "name": "control-confeccion-dev-ordenes-update",
+        "package": {},
+        "memory": 256,
+        "timeout": 15,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "OrdenesDashupdateLambdaVersionv0qAarpVkhpiWhbMXDGldj01OCFvGjWpKsQHeBoMybc"
+      },
+      "ordenes-detail": {
+        "handler": "src/handlers/ordenes.obtenerDetalle",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/ordenes/{id}",
+              "method": "GET"
+            },
+            "resolvedMethod": "GET",
+            "resolvedPath": "/ordenes/{id}"
+          }
+        ],
+        "name": "control-confeccion-dev-ordenes-detail",
+        "package": {},
+        "memory": 256,
+        "timeout": 15,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "OrdenesDashdetailLambdaVersionj9UlS993i49WzcBLA01hH5UY8d8VEWXPw7kgGBZVgk"
+      },
+      "reportes-dashboard": {
+        "handler": "src/handlers/reportes.dashboard",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/reportes",
+              "method": "GET"
+            },
+            "resolvedMethod": "GET",
+            "resolvedPath": "/reportes"
+          }
+        ],
+        "name": "control-confeccion-dev-reportes-dashboard",
+        "package": {},
+        "memory": 256,
+        "timeout": 15,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "ReportesDashdashboardLambdaVersionlMXZt1u2DNvqvtmn6eNMHmIDxlUURaUKWsm1Ra8Bg"
+      },
+      "reportes-instalaciones": {
+        "handler": "src/handlers/reportes.instalaciones",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/reportes/instalaciones",
+              "method": "GET"
+            },
+            "resolvedMethod": "GET",
+            "resolvedPath": "/reportes/instalaciones"
+          }
+        ],
+        "name": "control-confeccion-dev-reportes-instalaciones",
+        "package": {},
+        "memory": 256,
+        "timeout": 15,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "ReportesDashinstalacionesLambdaVersiondxpvI3lye09btzF0jZsxnfcfSkxIjBqrlReMzrKY"
+      },
+      "reportes-tipos": {
+        "handler": "src/handlers/reportes.tiposProductos",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/reportes/tipos-productos",
+              "method": "GET"
+            },
+            "resolvedMethod": "GET",
+            "resolvedPath": "/reportes/tipos-productos"
+          }
+        ],
+        "name": "control-confeccion-dev-reportes-tipos",
+        "package": {},
+        "memory": 256,
+        "timeout": 15,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "ReportesDashtiposLambdaVersiononmd5QqDosx7FApLsGgsWn4NpTQRPXvXJUIJuRAnCU"
+      },
+      "health": {
+        "handler": "src/handlers/health.check",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/health",
+              "method": "GET"
+            },
+            "resolvedMethod": "GET",
+            "resolvedPath": "/health"
+          }
+        ],
+        "name": "control-confeccion-dev-health",
+        "package": {},
+        "memory": 256,
+        "timeout": 15,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "HealthLambdaVersion6mYkVBtqlQt7r5AClq9A6WpqYvygArcER7s4GTdRFI"
+      }
+    },
+    "configValidationMode": "warn",
+    "serviceFilename": "serverless.yml",
+    "initialServerlessConfig": {
+      "service": "control-confeccion",
+      "frameworkVersion": "3",
+      "provider": {
+        "$ref": "$[\"service\"][\"provider\"]"
+      },
+      "functions": {
+        "$ref": "$[\"service\"][\"functions\"]"
+      },
+      "plugins": {
+        "$ref": "$[\"service\"][\"plugins\"]"
+      }
+    },
+    "layers": {},
+    "isDashboardMonitoringPreconfigured": false,
+    "artifact": "/Users/luislima/Documents/Uprj-EmpresaConfeccion/.serverless/control-confeccion.zip"
+  },
+  "package": {
+    "artifactDirectoryName": "serverless/control-confeccion/dev/1761712400916-2025-10-29T04:33:20.916Z",
+    "artifact": "control-confeccion.zip"
+  }
+}
