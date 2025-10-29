@@ -1,36 +1,46 @@
 import { query, exec } from "../db.js";
 import { ok, bad } from "../util.js";
 
-// ✅ Listar órdenes con filtros y ordenamiento
-export const listar = async (event) => {
+// ✅ Listar órdenes - VERSION SIMPLIFICADA COMPATIBLE
+export const listar = async (event = {}) => {
   try {
-    // Extraer parámetros de query
+    // Para compatibilidad, si no hay parámetros complejos, usar consulta simple
     const params = event.queryStringParameters || {}
+    const hasFilters = Object.keys(params).length > 0
+    
+    if (!hasFilters) {
+      // Consulta simple para compatibilidad
+      const sql = `
+        SELECT 
+          o.id_orden,
+          p.nombre AS cliente,
+          o.estado,
+          COUNT(d.id_detalle) AS items
+        FROM orden_compra o
+        JOIN persona p ON p.id_persona = o.id_cliente
+        LEFT JOIN detalle_orden_compra d ON o.id_orden = d.id_orden
+        GROUP BY o.id_orden, p.nombre, o.estado
+        ORDER BY o.id_orden DESC
+      `;
+      
+      const { rows } = await query(sql);
+      return ok({ rows });
+    }
+
+    // Lógica compleja solo si hay filtros
     const {
       search = '',
       estado = '',
       sortBy = 'id_orden',
-      sortOrder = 'DESC',
-      page = '1',
-      limit = '50'
+      sortOrder = 'DESC'
     } = params
-
-    // Validar parámetros
-    const pageNum = Math.max(1, parseInt(page))
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit)))
-    const offset = (pageNum - 1) * limitNum
-    
-    // Validar campo de ordenamiento
-    const validSortFields = ['id_orden', 'cliente', 'estado', 'items']
-    const sortField = validSortFields.includes(sortBy) ? sortBy : 'id_orden'
-    const sortDirection = sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC'
 
     // Construir condiciones WHERE
     let whereConditions = []
     let binds = {}
 
     if (search.trim()) {
-      whereConditions.push(`(UPPER(p.nombre) LIKE UPPER(:search) OR CAST(o.id_orden AS VARCHAR2(20)) LIKE :search)`)
+      whereConditions.push(`(UPPER(p.nombre) LIKE UPPER(:search) OR TO_CHAR(o.id_orden) LIKE :search)`)
       binds.search = `%${search.trim()}%`
     }
 
@@ -41,112 +51,28 @@ export const listar = async (event) => {
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
-    // Consulta para contar total de registros
-    const countSql = `
-      SELECT COUNT(*) AS total 
+    // Consulta con filtros
+    const sql = `
+      SELECT 
+        o.id_orden,
+        p.nombre AS cliente,
+        o.estado,
+        COUNT(d.id_detalle) AS items
       FROM orden_compra o
       JOIN persona p ON p.id_persona = o.id_cliente
+      LEFT JOIN detalle_orden_compra d ON o.id_orden = d.id_orden
       ${whereClause}
-    `
-    const countResult = await query(countSql, binds)
-    const totalRecords = countResult.rows[0]?.TOTAL || 0
-
-    // Consulta principal con paginación
-    const sql = `
-      SELECT * FROM (
-        SELECT 
-          o.id_orden,
-          p.nombre AS cliente,
-          o.estado,
-          COUNT(d.id_detalle) AS items,
-          o.fecha_orden,
-          SUM(NVL(d.cantidad, 0)) AS total_cantidad,
-          ROW_NUMBER() OVER (ORDER BY ${
-            sortField === 'cliente' ? 'p.nombre' : 
-            sortField === 'items' ? 'COUNT(d.id_detalle)' :
-            'o.' + sortField
-          } ${sortDirection}) as rn
-        FROM orden_compra o
-        JOIN persona p ON p.id_persona = o.id_cliente
-        LEFT JOIN detalle_orden_compra d ON o.id_orden = d.id_orden
-        ${whereClause}
-        GROUP BY o.id_orden, p.nombre, o.estado, o.fecha_orden
-      ) 
-      WHERE rn BETWEEN :offset + 1 AND :offset + :limit
+      GROUP BY o.id_orden, p.nombre, o.estado
+      ORDER BY o.id_orden ${sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC'}
     `;
 
-    const finalBinds = {
-      ...binds,
-      offset: offset,
-      limit: limitNum
-    }
-
-    const { rows } = await query(sql, finalBinds);
-
-    // Calcular metadatos de paginación
-    const totalPages = Math.ceil(totalRecords / limitNum)
-    const hasNext = pageNum < totalPages
-    const hasPrev = pageNum > 1
-
-    // Obtener estadísticas adicionales
-    const statsPromises = [
-      // Estadísticas por estado
-      query(`
-        SELECT 
-          estado,
-          COUNT(*) as cantidad,
-          SUM(total_items.items) as total_items
-        FROM orden_compra o
-        LEFT JOIN (
-          SELECT id_orden, COUNT(*) as items 
-          FROM detalle_orden_compra 
-          GROUP BY id_orden
-        ) total_items ON o.id_orden = total_items.id_orden
-        ${whereClause.replace('p.nombre', 'pers.nombre')}
-        ${whereClause ? 'AND' : 'WHERE'} EXISTS (
-          SELECT 1 FROM persona pers WHERE pers.id_persona = o.id_cliente
-          ${whereClause ? 'AND ' + whereConditions.join(' AND ').replace('p.nombre', 'pers.nombre') : ''}
-        )
-        GROUP BY estado
-      `, binds),
-      
-      // Total de clientes únicos
-      query(`
-        SELECT COUNT(DISTINCT o.id_cliente) as clientes_unicos
-        FROM orden_compra o
-        JOIN persona p ON p.id_persona = o.id_cliente
-        ${whereClause}
-      `, binds)
-    ]
-
-    const [estadisticasEstado, clientesResult] = await Promise.all(statsPromises)
-
-    const statistics = {
-      totalOrdenes: totalRecords,
-      clientesUnicos: clientesResult.rows[0]?.CLIENTES_UNICOS || 0,
-      porEstado: estadisticasEstado.rows || [],
-      recordsOnPage: rows.length
-    }
-
+    const { rows } = await query(sql, binds);
+    
     return ok({ 
       rows,
-      pagination: {
-        currentPage: pageNum,
-        totalPages,
-        totalRecords,
-        recordsPerPage: limitNum,
-        hasNext,
-        hasPrev,
-        recordsOnPage: rows.length
-      },
-      filters: {
-        search,
-        estado,
-        sortBy: sortField,
-        sortOrder: sortDirection
-      },
-      statistics
+      filters: { search, estado, sortBy, sortOrder }
     });
+    
   } catch (e) {
     console.error("Error listar órdenes:", e);
     return bad(`Error al listar órdenes: ${e.message}`);
@@ -238,14 +164,14 @@ export const obtenerDetalle = async (event) => {
   }
 }
 
-// ✅ Cambiar estado de orden (con validaciones mejoradas)
+// ✅ Cambiar estado de orden (VERSION SIMPLIFICADA)
 export const actualizar = async (event) => {
   try {
     const id = parseInt(event.pathParameters?.id);
     const body = JSON.parse(event.body || "{}");
     const { estado } = body;
 
-    // Validaciones mejoradas
+    // Validaciones básicas
     if (!id || isNaN(id)) {
       return bad("ID de orden inválido", 400);
     }
@@ -254,43 +180,14 @@ export const actualizar = async (event) => {
       return bad("El estado es requerido", 400);
     }
 
-    const estadosValidos = ['PENDIENTE', 'APROBADA', 'CANCELADA', 'EN_PROCESO', 'COMPLETADA'];
-    if (!estadosValidos.includes(estado.toUpperCase())) {
-      return bad(`Estado inválido. Estados válidos: ${estadosValidos.join(', ')}`, 400);
-    }
-
-    // Verificar que la orden existe y obtener información actual
-    const ordenActual = await query(
-      `SELECT o.estado, p.nombre AS cliente 
-       FROM orden_compra o 
-       JOIN persona p ON p.id_persona = o.id_cliente 
-       WHERE o.id_orden = :id`,
+    // Verificar que la orden existe
+    const ordenExists = await query(
+      `SELECT estado FROM orden_compra WHERE id_orden = :id`,
       { id }
     );
 
-    if (ordenActual.rows.length === 0) {
+    if (ordenExists.rows.length === 0) {
       return bad(`No existe la orden ${id}`, 404);
-    }
-
-    const estadoActual = ordenActual.rows[0].ESTADO;
-    const cliente = ordenActual.rows[0].CLIENTE;
-
-    // Validar transiciones de estado
-    const transicionesValidas = {
-      'PENDIENTE': ['APROBADA', 'CANCELADA'],
-      'APROBADA': ['EN_PROCESO', 'CANCELADA'],
-      'EN_PROCESO': ['COMPLETADA', 'CANCELADA'],
-      'COMPLETADA': [], // No se puede cambiar desde completada
-      'CANCELADA': ['PENDIENTE'] // Solo se puede reactivar a pendiente
-    };
-
-    if (estadoActual === estado.toUpperCase()) {
-      return bad(`La orden ya se encuentra en estado ${estado}`, 409);
-    }
-
-    const transicionesPermitidas = transicionesValidas[estadoActual] || [];
-    if (!transicionesPermitidas.includes(estado.toUpperCase())) {
-      return bad(`No se puede cambiar de ${estadoActual} a ${estado.toUpperCase()}. Transiciones válidas: ${transicionesPermitidas.join(', ') || 'ninguna'}`, 409);
     }
 
     // Realizar la actualización
@@ -305,10 +202,8 @@ export const actualizar = async (event) => {
 
     return ok({ 
       id_orden: id, 
-      estado_anterior: estadoActual,
-      estado_nuevo: estado.toUpperCase(),
-      cliente,
-      message: `Orden ${id} actualizada de ${estadoActual} a ${estado.toUpperCase()}`
+      estado: estado.toUpperCase(),
+      message: `Orden ${id} actualizada a ${estado.toUpperCase()}`
     });
   } catch (e) {
     console.error("Error actualizar orden:", e);
