@@ -54,10 +54,13 @@ export const listar = async (event) => {
     }, {});
 
     return ok({
-      personas: rows,
+      rows: rows,  // Frontend espera 'rows'
       total: rows.length,
-      estadisticas: estadisticasPorTipo,
-      filtros: { search, tipo }
+      statistics: {
+        total: rows.length,
+        porTipo: estadisticasPorTipo
+      },
+      filters: { search, tipo, sortBy, sortOrder }
     });
 
   } catch (e) {

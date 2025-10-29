@@ -63,9 +63,19 @@ export const listar = async (event) => {
     };
 
     return ok({
-      transacciones: rows,
-      estadisticas,
-      filtros: { search, cuenta }
+      rows: rows,  // Frontend espera 'rows'
+      statistics: {
+        total: rows.length,
+        montoTotal: rows.reduce((sum, trans) => sum + (trans.MONTO || 0), 0),
+        ingresos: rows.filter(t => t.MONTO > 0).reduce((sum, t) => sum + t.MONTO, 0),
+        gastos: Math.abs(rows.filter(t => t.MONTO < 0).reduce((sum, t) => sum + t.MONTO, 0)),
+        porCuenta: rows.reduce((acc, trans) => {
+          const cuenta = trans.CUENTA_DESCRIPCION || 'SIN_CUENTA';
+          acc[cuenta] = (acc[cuenta] || 0) + 1;
+          return acc;
+        }, {})
+      },
+      filters: { search, cuenta }
     });
 
   } catch (e) {

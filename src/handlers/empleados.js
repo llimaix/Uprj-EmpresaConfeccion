@@ -77,9 +77,21 @@ export const listar = async (event) => {
     };
 
     return ok({
-      empleados: rows,
-      estadisticas,
-      filtros: { search, instalacion, departamento }
+      rows: rows,  // Frontend espera 'rows'
+      statistics: {
+        total: rows.length,
+        porTipo: rows.reduce((acc, emp) => {
+          const tipo = emp.TIPO_EMPLEADO || 'SIN_TIPO';
+          acc[tipo] = (acc[tipo] || 0) + 1;
+          return acc;
+        }, {}),
+        porInstalacion: rows.reduce((acc, emp) => {
+          const inst = emp.INSTALACION_NOMBRE || 'SIN_INSTALACION';
+          acc[inst] = (acc[inst] || 0) + 1;
+          return acc;
+        }, {})
+      },
+      filters: { search, instalacion, departamento }
     });
 
   } catch (e) {

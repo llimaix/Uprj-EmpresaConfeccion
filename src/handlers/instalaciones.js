@@ -68,9 +68,18 @@ export const listar = async (event) => {
     };
 
     return ok({
-      instalaciones: rows,
-      estadisticas,
-      filtros: { search, pais }
+      rows: rows,  // Frontend espera 'rows'
+      statistics: {
+        total: rows.length,
+        conEmpleados: rows.filter(inst => inst.EMPLEADOS_COUNT > 0).length,
+        conInventario: rows.filter(inst => inst.INVENTARIOS_COUNT > 0).length,
+        porPais: rows.reduce((acc, inst) => {
+          const pais = inst.PAIS_NOMBRE || 'SIN_PAIS';
+          acc[pais] = (acc[pais] || 0) + 1;
+          return acc;
+        }, {})
+      },
+      filters: { search, pais }
     });
 
   } catch (e) {
