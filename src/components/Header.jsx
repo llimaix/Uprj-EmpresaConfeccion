@@ -3,6 +3,10 @@ export default function Header({ onNav, currentView }) {
     { id: "productos", label: "Productos", icon: "📦" },
     { id: "inventario", label: "Inventario", icon: "🏭" },
     { id: "ordenes", label: "Órdenes", icon: "📋" },
+    { id: "personas", label: "Clientes", icon: "👥" },
+    { id: "empleados", label: "Empleados", icon: "👨‍💼" },
+    { id: "instalaciones", label: "Instalaciones", icon: "🏢" },
+    { id: "finanzas", label: "Finanzas", icon: "💰" },
     { id: "reportes", label: "Reportes", icon: "📊" }
   ];
 
