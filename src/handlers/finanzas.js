@@ -1,5 +1,6 @@
 import { query, exec } from "../db.js";
 import { ok, bad } from "../util.js";
+import oracledb from 'oracledb';
 
 // ✅ Listar transacciones financieras
 export const listar = async (event) => {
@@ -7,46 +8,33 @@ export const listar = async (event) => {
     const params = event?.queryStringParameters || {};
     const {
       search = '',
-      tipo = '',
-      fechaDesde = '',
-      fechaHasta = '',
-      sortBy = 'fecha',
+      cuenta = '',
+      sortBy = 'id_transaccion',
       sortOrder = 'DESC'
     } = params;
 
     let sql = `
       SELECT 
         t.id_transaccion,
-        t.tipo,
+        t.id_cuenta,
         t.monto,
-        t.fecha,
         t.descripcion,
-        p.nombre AS persona_nombre
+        c.descripcion AS cuenta_descripcion
       FROM transaccion_financiera t
-      LEFT JOIN persona p ON t.id_persona = p.id_persona
+      LEFT JOIN cuenta_contable c ON t.id_cuenta = c.id_cuenta
     `;
 
     let binds = {};
     let whereConditions = [];
 
     if (search && search.trim()) {
-      whereConditions.push(`(UPPER(t.descripcion) LIKE UPPER(:search) OR UPPER(p.nombre) LIKE UPPER(:search))`);
+      whereConditions.push(`(UPPER(t.descripcion) LIKE UPPER(:search) OR UPPER(c.descripcion) LIKE UPPER(:search))`);
       binds.search = `%${search.trim()}%`;
     }
 
-    if (tipo && tipo.trim()) {
-      whereConditions.push(`UPPER(t.tipo) = UPPER(:tipo)`);
-      binds.tipo = tipo.trim();
-    }
-
-    if (fechaDesde && fechaDesde.trim()) {
-      whereConditions.push(`t.fecha >= TO_DATE(:fechaDesde, 'YYYY-MM-DD')`);
-      binds.fechaDesde = fechaDesde.trim();
-    }
-
-    if (fechaHasta && fechaHasta.trim()) {
-      whereConditions.push(`t.fecha <= TO_DATE(:fechaHasta, 'YYYY-MM-DD') + 1`);
-      binds.fechaHasta = fechaHasta.trim();
+    if (cuenta && cuenta.trim()) {
+      whereConditions.push(`t.id_cuenta = :cuenta`);
+      binds.cuenta = parseInt(cuenta);
     }
 
     if (whereConditions.length > 0) {
@@ -54,30 +42,35 @@ export const listar = async (event) => {
     }
 
     // Validar campo de ordenamiento
-    const validSortFields = ['fecha', 'monto', 'tipo'];
-    const sortField = validSortFields.includes(sortBy) ? `t.${sortBy}` : 't.fecha';
+    const validSortFields = ['id_transaccion', 'monto', 'descripcion'];
+    const sortField = validSortFields.includes(sortBy) ? `t.${sortBy}` : 't.id_transaccion';
     
     sql += ` ORDER BY ${sortField} ${sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC'}`;
 
     const { rows } = await query(sql, binds);
     
     // Calcular estadísticas
-    const ingresos = rows.filter(t => t.TIPO === 'INGRESO').reduce((sum, t) => sum + (t.MONTO || 0), 0);
-    const gastos = rows.filter(t => t.TIPO === 'GASTO').reduce((sum, t) => sum + (t.MONTO || 0), 0);
+    const estadisticas = {
+      total: rows.length,
+      montoTotal: rows.reduce((sum, trans) => sum + (trans.MONTO || 0), 0),
+      ingresos: rows.filter(t => t.MONTO > 0).reduce((sum, t) => sum + t.MONTO, 0),
+      gastos: Math.abs(rows.filter(t => t.MONTO < 0).reduce((sum, t) => sum + t.MONTO, 0)),
+      porCuenta: rows.reduce((acc, trans) => {
+        const cuenta = trans.CUENTA_DESCRIPCION || 'SIN_CUENTA';
+        acc[cuenta] = (acc[cuenta] || 0) + 1;
+        return acc;
+      }, {})
+    };
 
-    return ok({ 
-      rows,
-      statistics: {
-        total: rows.length,
-        ingresos,
-        gastos,
-        balance: ingresos - gastos
-      },
-      filters: { search, tipo, fechaDesde, fechaHasta, sortBy, sortOrder }
+    return ok({
+      transacciones: rows,
+      estadisticas,
+      filtros: { search, cuenta }
     });
+
   } catch (e) {
-    console.error("Error listar transacciones:", e);
-    return bad(`Error al listar transacciones: ${e.message}`);
+    console.error('Error al listar transacciones:', e);
+    return bad(`Error al cargar transacciones: ${e.message}`);
   }
 };
 
@@ -93,14 +86,12 @@ export const obtenerPorId = async (event) => {
     const sql = `
       SELECT 
         t.id_transaccion,
-        t.tipo,
+        t.id_cuenta,
         t.monto,
-        t.fecha,
         t.descripcion,
-        t.id_persona,
-        p.nombre AS persona_nombre
+        c.descripcion AS cuenta_descripcion
       FROM transaccion_financiera t
-      LEFT JOIN persona p ON t.id_persona = p.id_persona
+      LEFT JOIN cuenta_contable c ON t.id_cuenta = c.id_cuenta
       WHERE t.id_transaccion = :id
     `;
 
@@ -113,93 +104,71 @@ export const obtenerPorId = async (event) => {
     return ok({ transaccion: rows[0] });
   } catch (e) {
     console.error('Error obtener transacción:', e);
-    return bad(e.message);
+    return bad(`Error al obtener transacción: ${e.message}`);
   }
 };
 
-// ✅ Crear nueva transacción
+// ✅ Crear transacción financiera
 export const crear = async (event) => {
   try {
     const body = JSON.parse(event.body || '{}');
-    const { 
-      tipo, 
-      monto, 
-      descripcion, 
-      id_persona 
-    } = body;
-
-    // Validaciones
-    if (!tipo || !tipo.trim()) {
-      return bad('El tipo es requerido', 400);
-    }
-
-    const tiposValidos = ['INGRESO', 'GASTO'];
-    if (!tiposValidos.includes(tipo.toUpperCase())) {
-      return bad(`Tipo inválido. Tipos válidos: ${tiposValidos.join(', ')}`, 400);
-    }
-
-    if (!monto || monto <= 0) {
-      return bad('El monto debe ser mayor a 0', 400);
+    const { id_cuenta, monto, descripcion } = body;
+    
+    if (!monto || isNaN(monto)) {
+      return bad('El monto es obligatorio y debe ser un número', 400);
     }
 
     if (!descripcion || !descripcion.trim()) {
-      return bad('La descripción es requerida', 400);
+      return bad('La descripción es obligatoria', 400);
     }
 
-    // Verificar que la persona existe si se especifica
-    if (id_persona) {
-      const personaExists = await query(
-        `SELECT COUNT(*) as count FROM persona WHERE id_persona = :id_persona`,
-        { id_persona }
+    // Verificar que la cuenta existe si se proporciona
+    if (id_cuenta) {
+      const cuentaExists = await query(
+        `SELECT COUNT(*) as count FROM cuenta_contable WHERE id_cuenta = :id`,
+        { id: id_cuenta }
       );
 
-      if (personaExists.rows[0]?.COUNT === 0) {
-        return bad('Persona no encontrada', 404);
+      if (cuentaExists.rows[0]?.COUNT === 0) {
+        return bad('La cuenta especificada no existe', 400);
       }
     }
 
-    // Crear transacción
     const sql = `
-      INSERT INTO transaccion_financiera (id_transaccion, tipo, monto, fecha, descripcion, id_persona)
-      VALUES (seq_transaccion_financiera.NEXTVAL, :tipo, :monto, SYSDATE, :descripcion, :id_persona)
+      INSERT INTO transaccion_financiera (id_transaccion, id_cuenta, monto, descripcion)
+      VALUES (seq_transaccion.NEXTVAL, :id_cuenta, :monto, :descripcion)
+      RETURNING id_transaccion INTO :id_transaccion
     `;
-
-    await exec(sql, {
-      tipo: tipo.toUpperCase(),
-      monto,
+    
+    const binds = {
+      id_cuenta: id_cuenta || null,
+      monto: parseFloat(monto),
       descripcion: descripcion.trim(),
-      id_persona: id_persona || null
-    });
+      id_transaccion: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+    };
 
-    // Obtener el ID de la transacción recién creada
-    const transaccionId = await query(`SELECT seq_transaccion_financiera.CURRVAL as id FROM dual`);
-    const idTransaccion = transaccionId.rows[0].ID;
+    const result = await exec(sql, binds);
+    const idTransaccion = result.outBinds.id_transaccion[0];
 
     return ok({
       id_transaccion: idTransaccion,
-      tipo: tipo.toUpperCase(),
-      monto,
-      descripcion,
+      id_cuenta: id_cuenta || null,
+      monto: parseFloat(monto),
+      descripcion: descripcion.trim(),
       message: 'Transacción creada exitosamente'
     });
-
   } catch (e) {
     console.error('Error crear transacción:', e);
     return bad(`Error al crear transacción: ${e.message}`);
   }
 };
 
-// ✅ Actualizar transacción
+// ✅ Actualizar transacción financiera
 export const actualizar = async (event) => {
   try {
     const id = parseInt(event.pathParameters?.id);
     const body = JSON.parse(event.body || '{}');
-    const { 
-      tipo, 
-      monto, 
-      descripcion, 
-      id_persona 
-    } = body;
+    const { id_cuenta, monto, descripcion } = body;
 
     if (!id || isNaN(id)) {
       return bad('ID de transacción inválido', 400);
@@ -207,7 +176,7 @@ export const actualizar = async (event) => {
 
     // Verificar que la transacción existe
     const transaccionActual = await query(
-      `SELECT tipo, monto FROM transaccion_financiera WHERE id_transaccion = :id`,
+      `SELECT descripcion FROM transaccion_financiera WHERE id_transaccion = :id`,
       { id }
     );
 
@@ -215,22 +184,30 @@ export const actualizar = async (event) => {
       return bad('Transacción no encontrada', 404);
     }
 
+    // Verificar que la cuenta existe si se proporciona
+    if (id_cuenta) {
+      const cuentaExists = await query(
+        `SELECT COUNT(*) as count FROM cuenta_contable WHERE id_cuenta = :id`,
+        { id: id_cuenta }
+      );
+
+      if (cuentaExists.rows[0]?.COUNT === 0) {
+        return bad('La cuenta especificada no existe', 400);
+      }
+    }
+
     // Construir la actualización dinámicamente
     const updateFields = [];
     const binds = { id };
 
-    if (tipo && tipo.trim()) {
-      const tiposValidos = ['INGRESO', 'GASTO'];
-      if (!tiposValidos.includes(tipo.toUpperCase())) {
-        return bad(`Tipo inválido. Tipos válidos: ${tiposValidos.join(', ')}`, 400);
-      }
-      updateFields.push('tipo = :tipo');
-      binds.tipo = tipo.toUpperCase();
+    if (id_cuenta !== undefined) {
+      updateFields.push('id_cuenta = :id_cuenta');
+      binds.id_cuenta = id_cuenta || null;
     }
 
-    if (monto && monto > 0) {
+    if (monto !== undefined && !isNaN(monto)) {
       updateFields.push('monto = :monto');
-      binds.monto = monto;
+      binds.monto = parseFloat(monto);
     }
 
     if (descripcion && descripcion.trim()) {
@@ -238,31 +215,18 @@ export const actualizar = async (event) => {
       binds.descripcion = descripcion.trim();
     }
 
-    if (id_persona !== undefined) {
-      // Verificar que la persona existe si no es null
-      if (id_persona) {
-        const personaExists = await query(
-          `SELECT COUNT(*) as count FROM persona WHERE id_persona = :id_persona`,
-          { id_persona }
-        );
-
-        if (personaExists.rows[0]?.COUNT === 0) {
-          return bad('Persona no encontrada', 404);
-        }
-      }
-
-      updateFields.push('id_persona = :id_persona');
-      binds.id_persona = id_persona || null;
-    }
-
     if (updateFields.length === 0) {
       return bad('No hay campos para actualizar', 400);
     }
 
-    await exec(
+    const result = await exec(
       `UPDATE transaccion_financiera SET ${updateFields.join(', ')} WHERE id_transaccion = :id`,
       binds
     );
+
+    if (result.rowsAffected === 0) {
+      return bad('No se pudo actualizar la transacción', 500);
+    }
 
     return ok({
       id_transaccion: id,
@@ -275,7 +239,7 @@ export const actualizar = async (event) => {
   }
 };
 
-// ✅ Eliminar transacción
+// ✅ Eliminar transacción financiera
 export const eliminar = async (event) => {
   try {
     const id = parseInt(event.pathParameters?.id);
@@ -286,7 +250,7 @@ export const eliminar = async (event) => {
 
     // Verificar que la transacción existe
     const transaccionActual = await query(
-      `SELECT tipo, monto FROM transaccion_financiera WHERE id_transaccion = :id`,
+      `SELECT descripcion FROM transaccion_financiera WHERE id_transaccion = :id`,
       { id }
     );
 
@@ -294,11 +258,27 @@ export const eliminar = async (event) => {
       return bad('Transacción no encontrada', 404);
     }
 
-    // Eliminar transacción
-    await exec(`DELETE FROM transaccion_financiera WHERE id_transaccion = :id`, { id });
+    const descripcionTransaccion = transaccionActual.rows[0].DESCRIPCION;
+
+    // Verificar dependencias (auditorías)
+    const tieneAuditorias = await query(
+      `SELECT COUNT(*) as count FROM auditoria WHERE id_transaccion = :id`,
+      { id }
+    );
+
+    if (tieneAuditorias.rows[0]?.COUNT > 0) {
+      return bad('No se puede eliminar: la transacción tiene auditorías asociadas', 409);
+    }
+
+    const result = await exec(`DELETE FROM transaccion_financiera WHERE id_transaccion = :id`, { id });
+
+    if (result.rowsAffected === 0) {
+      return bad('No se pudo eliminar la transacción', 500);
+    }
 
     return ok({
       id_transaccion: id,
+      descripcion: descripcionTransaccion,
       message: 'Transacción eliminada exitosamente'
     });
 
@@ -309,91 +289,67 @@ export const eliminar = async (event) => {
 };
 
 // ✅ Obtener resumen financiero
-export const resumen = async (event) => {
+export const obtenerResumen = async () => {
   try {
-    const params = event?.queryStringParameters || {};
-    const { periodo = 'mes' } = params; // mes, trimestre, año
+    const sql = `
+      SELECT 
+        COUNT(*) as total_transacciones,
+        SUM(CASE WHEN monto > 0 THEN monto ELSE 0 END) as total_ingresos,
+        SUM(CASE WHEN monto < 0 THEN ABS(monto) ELSE 0 END) as total_gastos,
+        SUM(monto) as balance_neto,
+        AVG(monto) as monto_promedio
+      FROM transaccion_financiera
+    `;
 
-    let filtroFecha = '';
-    switch (periodo.toLowerCase()) {
-      case 'trimestre':
-        filtroFecha = `WHERE t.fecha >= TRUNC(SYSDATE, 'Q')`;
-        break;
-      case 'año':
-        filtroFecha = `WHERE t.fecha >= TRUNC(SYSDATE, 'Y')`;
-        break;
-      default: // mes
-        filtroFecha = `WHERE t.fecha >= TRUNC(SYSDATE, 'MM')`;
-    }
+    const { rows } = await query(sql);
+    const resumen = rows[0];
 
-    const [resumenGeneral, porTipo, porMes] = await Promise.all([
-      // Resumen general del período
-      query(`
-        SELECT 
-          COUNT(*) as total_transacciones,
-          SUM(CASE WHEN tipo = 'INGRESO' THEN monto ELSE 0 END) as total_ingresos,
-          SUM(CASE WHEN tipo = 'GASTO' THEN monto ELSE 0 END) as total_gastos,
-          SUM(CASE WHEN tipo = 'INGRESO' THEN monto ELSE -monto END) as balance
-        FROM transaccion_financiera t
-        ${filtroFecha}
-      `),
+    // Obtener distribución por cuenta
+    const cuentasSql = `
+      SELECT 
+        c.id_cuenta,
+        c.descripcion,
+        COUNT(t.id_transaccion) as transacciones_count,
+        SUM(t.monto) as total_monto
+      FROM cuenta_contable c
+      LEFT JOIN transaccion_financiera t ON c.id_cuenta = t.id_cuenta
+      GROUP BY c.id_cuenta, c.descripcion
+      ORDER BY transacciones_count DESC
+    `;
 
-      // Resumen por tipo
-      query(`
-        SELECT 
-          tipo,
-          COUNT(*) as cantidad,
-          SUM(monto) as total,
-          AVG(monto) as promedio
-        FROM transaccion_financiera t
-        ${filtroFecha}
-        GROUP BY tipo
-        ORDER BY tipo
-      `),
-
-      // Evolución por mes (últimos 6 meses)
-      query(`
-        SELECT 
-          TO_CHAR(fecha, 'YYYY-MM') as mes,
-          tipo,
-          SUM(monto) as total
-        FROM transaccion_financiera
-        WHERE fecha >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -6)
-        GROUP BY TO_CHAR(fecha, 'YYYY-MM'), tipo
-        ORDER BY mes, tipo
-      `)
-    ]);
+    const cuentasResult = await query(cuentasSql);
 
     return ok({
-      periodo,
-      resumen: resumenGeneral.rows[0] || {},
-      porTipo: porTipo.rows || [],
-      evolucion: porMes.rows || []
+      resumen: {
+        totalTransacciones: resumen.TOTAL_TRANSACCIONES || 0,
+        totalIngresos: resumen.TOTAL_INGRESOS || 0,
+        totalGastos: resumen.TOTAL_GASTOS || 0,
+        balanceNeto: resumen.BALANCE_NETO || 0,
+        montoPromedio: resumen.MONTO_PROMEDIO || 0
+      },
+      cuentas: cuentasResult.rows
     });
-
   } catch (e) {
     console.error('Error obtener resumen financiero:', e);
-    return bad(e.message);
+    return bad(`Error al obtener resumen: ${e.message}`);
   }
 };
 
-// ✅ Obtener tipos de transacciones
+// ✅ Obtener tipos de cuentas
 export const obtenerTipos = async () => {
   try {
     const sql = `
       SELECT 
-        tipo,
-        COUNT(*) as cantidad,
-        SUM(monto) as total
-      FROM transaccion_financiera
-      GROUP BY tipo
-      ORDER BY tipo
+        id_cuenta,
+        descripcion
+      FROM cuenta_contable
+      ORDER BY descripcion
     `;
 
     const { rows } = await query(sql);
-    return ok({ tipos: rows });
+    return ok({ cuentas: rows });
   } catch (e) {
-    console.error('Error obtener tipos de transacciones:', e);
-    return bad(e.message);
+    console.error('Error obtener tipos de cuentas:', e);
+    return bad(`Error al obtener cuentas: ${e.message}`);
   }
 };

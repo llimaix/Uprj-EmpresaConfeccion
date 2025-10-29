@@ -1,5 +1,6 @@
 import { query, exec } from "../db.js";
 import { ok, bad } from "../util.js";
+import oracledb from 'oracledb';
 
 // ✅ Listar instalaciones
 export const listar = async (event) => {
@@ -7,6 +8,7 @@ export const listar = async (event) => {
     const params = event?.queryStringParameters || {};
     const {
       search = '',
+      pais = '',
       sortBy = 'nombre',
       sortOrder = 'ASC'
     } = params;
@@ -16,10 +18,12 @@ export const listar = async (event) => {
         i.id_instalacion,
         i.nombre,
         i.ubicacion,
-        i.tipo,
-        COUNT(e.id_empleado) as empleados_count,
+        i.id_pais,
+        p.nombre AS pais_nombre,
+        COUNT(e.id_persona) as empleados_count,
         COUNT(inv.id_inventario) as inventarios_count
       FROM instalacion i
+      LEFT JOIN pais p ON i.id_pais = p.id_pais
       LEFT JOIN empleado e ON i.id_instalacion = e.id_instalacion
       LEFT JOIN inventario inv ON i.id_instalacion = inv.id_instalacion
     `;
@@ -28,18 +32,23 @@ export const listar = async (event) => {
     let whereConditions = [];
 
     if (search && search.trim()) {
-      whereConditions.push(`(UPPER(i.nombre) LIKE UPPER(:search) OR UPPER(i.ubicacion) LIKE UPPER(:search) OR UPPER(i.tipo) LIKE UPPER(:search))`);
+      whereConditions.push(`(UPPER(i.nombre) LIKE UPPER(:search) OR UPPER(i.ubicacion) LIKE UPPER(:search))`);
       binds.search = `%${search.trim()}%`;
+    }
+
+    if (pais && pais.trim()) {
+      whereConditions.push(`i.id_pais = :pais`);
+      binds.pais = parseInt(pais);
     }
 
     if (whereConditions.length > 0) {
       sql += ` WHERE ${whereConditions.join(' AND ')}`;
     }
 
-    sql += ` GROUP BY i.id_instalacion, i.nombre, i.ubicacion, i.tipo`;
+    sql += ` GROUP BY i.id_instalacion, i.nombre, i.ubicacion, i.id_pais, p.nombre`;
 
     // Validar campo de ordenamiento
-    const validSortFields = ['nombre', 'ubicacion', 'tipo'];
+    const validSortFields = ['nombre', 'ubicacion'];
     const sortField = validSortFields.includes(sortBy) ? `i.${sortBy}` : 'i.nombre';
     
     sql += ` ORDER BY ${sortField} ${sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC'}`;
@@ -47,21 +56,26 @@ export const listar = async (event) => {
     const { rows } = await query(sql, binds);
     
     // Calcular estadísticas
-    const stats = {
-      totalInstalaciones: rows.length,
-      totalEmpleados: rows.reduce((sum, inst) => sum + (inst.EMPLEADOS_COUNT || 0), 0),
-      totalInventarios: rows.reduce((sum, inst) => sum + (inst.INVENTARIOS_COUNT || 0), 0),
-      tiposUnicos: new Set(rows.map(inst => inst.TIPO).filter(Boolean)).size
+    const estadisticas = {
+      total: rows.length,
+      conEmpleados: rows.filter(inst => inst.EMPLEADOS_COUNT > 0).length,
+      conInventario: rows.filter(inst => inst.INVENTARIOS_COUNT > 0).length,
+      porPais: rows.reduce((acc, inst) => {
+        const pais = inst.PAIS_NOMBRE || 'SIN_PAIS';
+        acc[pais] = (acc[pais] || 0) + 1;
+        return acc;
+      }, {})
     };
 
-    return ok({ 
-      rows,
-      statistics: stats,
-      filters: { search, sortBy, sortOrder }
+    return ok({
+      instalaciones: rows,
+      estadisticas,
+      filtros: { search, pais }
     });
+
   } catch (e) {
-    console.error("Error listar instalaciones:", e);
-    return bad(`Error al listar instalaciones: ${e.message}`);
+    console.error('Error al listar instalaciones:', e);
+    return bad(`Error al cargar instalaciones: ${e.message}`);
   }
 };
 
@@ -79,8 +93,10 @@ export const obtenerPorId = async (event) => {
         i.id_instalacion,
         i.nombre,
         i.ubicacion,
-        i.tipo
+        i.id_pais,
+        p.nombre AS pais_nombre
       FROM instalacion i
+      LEFT JOIN pais p ON i.id_pais = p.id_pais
       WHERE i.id_instalacion = :id
     `;
 
@@ -92,95 +108,93 @@ export const obtenerPorId = async (event) => {
 
     const instalacion = rows[0];
 
-    // Obtener empleados de la instalación
-    const empleados = await query(`
+    // Obtener empleados de esta instalación
+    const empleadosSql = `
       SELECT 
-        e.id_empleado,
+        e.id_persona,
         p.nombre,
-        e.cargo,
-        e.salario
+        e.tipo_empleado
       FROM empleado e
       JOIN persona p ON e.id_persona = p.id_persona
       WHERE e.id_instalacion = :id
       ORDER BY p.nombre
-    `, { id });
+    `;
 
-    // Obtener inventarios de la instalación
-    const inventarios = await query(`
+    const empleados = await query(empleadosSql, { id });
+    instalacion.empleados = empleados.rows;
+
+    // Obtener inventario de esta instalación
+    const inventarioSql = `
       SELECT 
         inv.id_inventario,
-        prod.nombre as producto,
         inv.cantidad,
-        prod.tipo as tipo_producto
+        prod.nombre AS producto_nombre,
+        prod.tipo AS producto_tipo
       FROM inventario inv
       JOIN producto prod ON inv.id_producto = prod.id_producto
       WHERE inv.id_instalacion = :id
       ORDER BY prod.nombre
-    `, { id });
+    `;
 
-    instalacion.empleados = empleados.rows || [];
-    instalacion.inventarios = inventarios.rows || [];
+    const inventario = await query(inventarioSql, { id });
+    instalacion.inventario = inventario.rows;
 
     return ok({ instalacion });
   } catch (e) {
     console.error('Error obtener instalación:', e);
-    return bad(e.message);
+    return bad(`Error al obtener instalación: ${e.message}`);
   }
 };
 
-// ✅ Crear nueva instalación
+// ✅ Crear instalación
 export const crear = async (event) => {
   try {
     const body = JSON.parse(event.body || '{}');
-    const { 
-      nombre, 
-      ubicacion, 
-      tipo 
-    } = body;
-
-    // Validaciones
+    const { nombre, ubicacion, id_pais } = body;
+    
     if (!nombre || !nombre.trim()) {
-      return bad('El nombre es requerido', 400);
+      return bad('El nombre es obligatorio', 400);
     }
 
     if (!ubicacion || !ubicacion.trim()) {
-      return bad('La ubicación es requerida', 400);
+      return bad('La ubicación es obligatoria', 400);
     }
 
-    // Verificar que no existe otra instalación con el mismo nombre
-    const nombreExists = await query(
-      `SELECT COUNT(*) as count FROM instalacion WHERE UPPER(nombre) = UPPER(:nombre)`,
-      { nombre: nombre.trim() }
-    );
+    // Verificar que el país existe si se proporciona
+    if (id_pais) {
+      const paisExists = await query(
+        `SELECT COUNT(*) as count FROM pais WHERE id_pais = :id`,
+        { id: id_pais }
+      );
 
-    if (nombreExists.rows[0]?.COUNT > 0) {
-      return bad('Ya existe una instalación con ese nombre', 409);
+      if (paisExists.rows[0]?.COUNT === 0) {
+        return bad('El país especificado no existe', 400);
+      }
     }
 
-    // Crear instalación
     const sql = `
-      INSERT INTO instalacion (id_instalacion, nombre, ubicacion, tipo)
-      VALUES (seq_instalacion.NEXTVAL, :nombre, :ubicacion, :tipo)
+      INSERT INTO instalacion (id_instalacion, nombre, ubicacion, id_pais)
+      VALUES (seq_instalacion.NEXTVAL, :nombre, :ubicacion, :id_pais)
+      RETURNING id_instalacion INTO :id_instalacion
     `;
-
-    await exec(sql, {
+    
+    const binds = {
       nombre: nombre.trim(),
       ubicacion: ubicacion.trim(),
-      tipo: tipo?.trim() || null
-    });
+      id_pais: id_pais || null,
+      id_instalacion: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+    };
 
-    // Obtener el ID de la instalación recién creada
-    const instalacionId = await query(`SELECT seq_instalacion.CURRVAL as id FROM dual`);
-    const idInstalacion = instalacionId.rows[0].ID;
+    const result = await exec(sql, binds);
+    const idInstalacion = result.outBinds.id_instalacion[0];
 
     return ok({
       id_instalacion: idInstalacion,
-      nombre,
-      ubicacion,
-      tipo,
+      nombre: nombre.trim(),
+      ubicacion: ubicacion.trim(),
+      id_pais: id_pais || null,
       message: 'Instalación creada exitosamente'
     });
-
   } catch (e) {
     console.error('Error crear instalación:', e);
     return bad(`Error al crear instalación: ${e.message}`);
@@ -192,11 +206,7 @@ export const actualizar = async (event) => {
   try {
     const id = parseInt(event.pathParameters?.id);
     const body = JSON.parse(event.body || '{}');
-    const { 
-      nombre, 
-      ubicacion, 
-      tipo 
-    } = body;
+    const { nombre, ubicacion, id_pais } = body;
 
     if (!id || isNaN(id)) {
       return bad('ID de instalación inválido', 400);
@@ -212,15 +222,15 @@ export const actualizar = async (event) => {
       return bad('Instalación no encontrada', 404);
     }
 
-    // Verificar nombre único si se está actualizando
-    if (nombre && nombre.trim()) {
-      const nombreExists = await query(
-        `SELECT COUNT(*) as count FROM instalacion WHERE UPPER(nombre) = UPPER(:nombre) AND id_instalacion != :id`,
-        { nombre: nombre.trim(), id }
+    // Verificar que el país existe si se proporciona
+    if (id_pais) {
+      const paisExists = await query(
+        `SELECT COUNT(*) as count FROM pais WHERE id_pais = :id`,
+        { id: id_pais }
       );
 
-      if (nombreExists.rows[0]?.COUNT > 0) {
-        return bad('Ya existe otra instalación con ese nombre', 409);
+      if (paisExists.rows[0]?.COUNT === 0) {
+        return bad('El país especificado no existe', 400);
       }
     }
 
@@ -238,19 +248,23 @@ export const actualizar = async (event) => {
       binds.ubicacion = ubicacion.trim();
     }
 
-    if (tipo !== undefined) {
-      updateFields.push('tipo = :tipo');
-      binds.tipo = tipo?.trim() || null;
+    if (id_pais !== undefined) {
+      updateFields.push('id_pais = :id_pais');
+      binds.id_pais = id_pais || null;
     }
 
     if (updateFields.length === 0) {
       return bad('No hay campos para actualizar', 400);
     }
 
-    await exec(
+    const result = await exec(
       `UPDATE instalacion SET ${updateFields.join(', ')} WHERE id_instalacion = :id`,
       binds
     );
+
+    if (result.rowsAffected === 0) {
+      return bad('No se pudo actualizar la instalación', 500);
+    }
 
     return ok({
       id_instalacion: id,
@@ -282,25 +296,36 @@ export const eliminar = async (event) => {
       return bad('Instalación no encontrada', 404);
     }
 
-    // Verificar dependencias antes de eliminar
-    const [empleados, inventarios] = await Promise.all([
-      query(`SELECT COUNT(*) as count FROM empleado WHERE id_instalacion = :id`, { id }),
-      query(`SELECT COUNT(*) as count FROM inventario WHERE id_instalacion = :id`, { id })
-    ]);
+    const nombreInstalacion = instalacionActual.rows[0].NOMBRE;
 
-    if (empleados.rows[0]?.COUNT > 0) {
-      return bad('No se puede eliminar: la instalación tiene empleados asignados', 409);
+    // Verificar dependencias
+    const tieneEmpleados = await query(
+      `SELECT COUNT(*) as count FROM empleado WHERE id_instalacion = :id`,
+      { id }
+    );
+
+    if (tieneEmpleados.rows[0]?.COUNT > 0) {
+      return bad('No se puede eliminar: la instalación tiene empleados asociados', 409);
     }
 
-    if (inventarios.rows[0]?.COUNT > 0) {
-      return bad('No se puede eliminar: la instalación tiene inventarios asociados', 409);
+    const tieneInventario = await query(
+      `SELECT COUNT(*) as count FROM inventario WHERE id_instalacion = :id`,
+      { id }
+    );
+
+    if (tieneInventario.rows[0]?.COUNT > 0) {
+      return bad('No se puede eliminar: la instalación tiene inventario asociado', 409);
     }
 
-    // Eliminar instalación
-    await exec(`DELETE FROM instalacion WHERE id_instalacion = :id`, { id });
+    const result = await exec(`DELETE FROM instalacion WHERE id_instalacion = :id`, { id });
+
+    if (result.rowsAffected === 0) {
+      return bad('No se pudo eliminar la instalación', 500);
+    }
 
     return ok({
       id_instalacion: id,
+      nombre: nombreInstalacion,
       message: 'Instalación eliminada exitosamente'
     });
 
@@ -310,89 +335,63 @@ export const eliminar = async (event) => {
   }
 };
 
-// ✅ Obtener tipos de instalaciones únicos
+// ✅ Obtener tipos de instalaciones (si los hubiera) - En este caso, solo países
 export const obtenerTipos = async () => {
   try {
     const sql = `
       SELECT 
-        tipo,
-        COUNT(*) as cantidad
-      FROM instalacion
-      WHERE tipo IS NOT NULL
-      GROUP BY tipo
-      ORDER BY tipo
+        p.id_pais,
+        p.nombre,
+        COUNT(i.id_instalacion) as instalaciones_count
+      FROM pais p
+      LEFT JOIN instalacion i ON p.id_pais = i.id_pais
+      GROUP BY p.id_pais, p.nombre
+      ORDER BY p.nombre
     `;
 
     const { rows } = await query(sql);
-    return ok({ tipos: rows });
+    return ok({ paises: rows });
   } catch (e) {
     console.error('Error obtener tipos de instalaciones:', e);
-    return bad(e.message);
+    return bad(`Error al obtener países: ${e.message}`);
   }
 };
 
 // ✅ Obtener estadísticas de instalaciones
-export const estadisticas = async () => {
+export const obtenerEstadisticas = async () => {
   try {
-    const [resumenGeneral, porTipo, masActivas] = await Promise.all([
-      // Resumen general
-      query(`
-        SELECT 
-          COUNT(*) as total_instalaciones,
-          COUNT(DISTINCT tipo) as tipos_unicos,
-          SUM(empleados.cantidad) as total_empleados,
-          SUM(inventarios.cantidad) as total_inventarios
-        FROM instalacion i
-        LEFT JOIN (
-          SELECT id_instalacion, COUNT(*) as cantidad 
-          FROM empleado 
-          GROUP BY id_instalacion
-        ) empleados ON i.id_instalacion = empleados.id_instalacion
-        LEFT JOIN (
-          SELECT id_instalacion, COUNT(*) as cantidad 
-          FROM inventario 
-          GROUP BY id_instalacion
-        ) inventarios ON i.id_instalacion = inventarios.id_instalacion
-      `),
+    const sql = `
+      SELECT 
+        COUNT(*) as total_instalaciones,
+        COUNT(DISTINCT i.id_pais) as paises_con_instalaciones,
+        AVG(empleados_count.empleados) as promedio_empleados_por_instalacion,
+        AVG(inventario_count.items) as promedio_items_inventario
+      FROM instalacion i
+      LEFT JOIN (
+        SELECT id_instalacion, COUNT(*) as empleados
+        FROM empleado
+        GROUP BY id_instalacion
+      ) empleados_count ON i.id_instalacion = empleados_count.id_instalacion
+      LEFT JOIN (
+        SELECT id_instalacion, COUNT(*) as items
+        FROM inventario
+        GROUP BY id_instalacion
+      ) inventario_count ON i.id_instalacion = inventario_count.id_instalacion
+    `;
 
-      // Por tipo
-      query(`
-        SELECT 
-          i.tipo,
-          COUNT(*) as cantidad_instalaciones,
-          COUNT(e.id_empleado) as total_empleados
-        FROM instalacion i
-        LEFT JOIN empleado e ON i.id_instalacion = e.id_instalacion
-        WHERE i.tipo IS NOT NULL
-        GROUP BY i.tipo
-        ORDER BY cantidad_instalaciones DESC
-      `),
-
-      // Más activas (con más empleados e inventarios)
-      query(`
-        SELECT 
-          i.nombre,
-          i.tipo,
-          COUNT(DISTINCT e.id_empleado) as empleados,
-          COUNT(DISTINCT inv.id_inventario) as inventarios,
-          (COUNT(DISTINCT e.id_empleado) + COUNT(DISTINCT inv.id_inventario)) as actividad
-        FROM instalacion i
-        LEFT JOIN empleado e ON i.id_instalacion = e.id_instalacion
-        LEFT JOIN inventario inv ON i.id_instalacion = inv.id_instalacion
-        GROUP BY i.id_instalacion, i.nombre, i.tipo
-        ORDER BY actividad DESC
-        FETCH FIRST 10 ROWS ONLY
-      `)
-    ]);
+    const { rows } = await query(sql);
+    const estadisticas = rows[0];
 
     return ok({
-      resumen: resumenGeneral.rows[0] || {},
-      porTipo: porTipo.rows || [],
-      masActivas: masActivas.rows || []
+      estadisticas: {
+        totalInstalaciones: estadisticas.TOTAL_INSTALACIONES || 0,
+        paisesConInstalaciones: estadisticas.PAISES_CON_INSTALACIONES || 0,
+        promedioEmpleadosPorInstalacion: Math.round(estadisticas.PROMEDIO_EMPLEADOS_POR_INSTALACION || 0),
+        promedioItemsInventario: Math.round(estadisticas.PROMEDIO_ITEMS_INVENTARIO || 0)
+      }
     });
-
   } catch (e) {
-    console.error('Error obtener estadísticas de instalaciones:', e);
-    return bad(e.message);
+    console.error('Error obtener estadísticas instalaciones:', e);
+    return bad(`Error al obtener estadísticas: ${e.message}`);
   }
 };

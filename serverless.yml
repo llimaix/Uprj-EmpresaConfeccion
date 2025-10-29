@@ -67,6 +67,13 @@ functions:
           path: /productos/{id}
           method: DELETE
 
+  productos-debug:
+    handler: src/handlers/productos.debug
+    events:
+      - httpApi:
+          path: /productos/debug
+          method: GET
+
   # =========================
   # Inventario
   # =========================

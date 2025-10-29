@@ -1,5 +1,6 @@
 import { query, exec } from "../db.js";
 import { ok, bad } from "../util.js";
+import oracledb from 'oracledb';
 
 // ✅ Listar empleados con filtros
 export const listar = async (event) => {
@@ -8,36 +9,43 @@ export const listar = async (event) => {
     const {
       search = '',
       instalacion = '',
+      departamento = '',
       sortBy = 'nombre',
       sortOrder = 'ASC'
     } = params;
 
     let sql = `
       SELECT 
-        e.id_empleado,
+        e.id_persona,
         p.nombre,
-        p.telefono,
-        p.email,
-        e.cargo,
-        e.salario,
-        e.fecha_contratacion,
-        i.nombre AS instalacion
+        p.tipo,
+        e.tipo_empleado,
+        e.id_instalacion,
+        e.id_departamento,
+        i.nombre AS instalacion_nombre,
+        d.nombre AS departamento_nombre
       FROM empleado e
       JOIN persona p ON e.id_persona = p.id_persona
       LEFT JOIN instalacion i ON e.id_instalacion = i.id_instalacion
+      LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
     `;
 
     let binds = {};
     let whereConditions = [];
 
     if (search && search.trim()) {
-      whereConditions.push(`(UPPER(p.nombre) LIKE UPPER(:search) OR UPPER(e.cargo) LIKE UPPER(:search))`);
+      whereConditions.push(`UPPER(p.nombre) LIKE UPPER(:search)`);
       binds.search = `%${search.trim()}%`;
     }
 
     if (instalacion && instalacion.trim()) {
       whereConditions.push(`e.id_instalacion = :instalacion`);
-      binds.instalacion = instalacion.trim();
+      binds.instalacion = parseInt(instalacion);
+    }
+
+    if (departamento && departamento.trim()) {
+      whereConditions.push(`e.id_departamento = :departamento`);
+      binds.departamento = parseInt(departamento);
     }
 
     if (whereConditions.length > 0) {
@@ -45,7 +53,7 @@ export const listar = async (event) => {
     }
 
     // Validar campo de ordenamiento
-    const validSortFields = ['nombre', 'cargo', 'salario', 'fecha_contratacion'];
+    const validSortFields = ['nombre', 'tipo_empleado'];
     const sortField = validSortFields.includes(sortBy) ? 
       (sortBy === 'nombre' ? 'p.nombre' : `e.${sortBy}`) : 'p.nombre';
     
@@ -54,20 +62,29 @@ export const listar = async (event) => {
     const { rows } = await query(sql, binds);
     
     // Calcular estadísticas
-    const stats = {
-      totalEmpleados: rows.length,
-      salarioPromedio: rows.reduce((sum, emp) => sum + (emp.SALARIO || 0), 0) / rows.length || 0,
-      instalacionesRepresentadas: new Set(rows.map(emp => emp.INSTALACION).filter(Boolean)).size
+    const estadisticas = {
+      total: rows.length,
+      porTipo: rows.reduce((acc, emp) => {
+        const tipo = emp.TIPO_EMPLEADO || 'SIN_TIPO';
+        acc[tipo] = (acc[tipo] || 0) + 1;
+        return acc;
+      }, {}),
+      porInstalacion: rows.reduce((acc, emp) => {
+        const inst = emp.INSTALACION_NOMBRE || 'SIN_INSTALACION';
+        acc[inst] = (acc[inst] || 0) + 1;
+        return acc;
+      }, {})
     };
 
-    return ok({ 
-      rows,
-      statistics: stats,
-      filters: { search, instalacion, sortBy, sortOrder }
+    return ok({
+      empleados: rows,
+      estadisticas,
+      filtros: { search, instalacion, departamento }
     });
+
   } catch (e) {
-    console.error("Error listar empleados:", e);
-    return bad(`Error al listar empleados: ${e.message}`);
+    console.error('Error al listar empleados:', e);
+    return bad(`Error al cargar empleados: ${e.message}`);
   }
 };
 
@@ -82,20 +99,19 @@ export const obtenerPorId = async (event) => {
 
     const sql = `
       SELECT 
-        e.id_empleado,
         e.id_persona,
         p.nombre,
-        p.telefono,
-        p.email,
-        e.cargo,
-        e.salario,
-        e.fecha_contratacion,
+        p.tipo,
+        e.tipo_empleado,
         e.id_instalacion,
-        i.nombre AS instalacion
+        e.id_departamento,
+        i.nombre AS instalacion_nombre,
+        d.nombre AS departamento_nombre
       FROM empleado e
       JOIN persona p ON e.id_persona = p.id_persona
       LEFT JOIN instalacion i ON e.id_instalacion = i.id_instalacion
-      WHERE e.id_empleado = :id
+      LEFT JOIN departamento d ON e.id_departamento = d.id_departamento
+      WHERE e.id_persona = :id
     `;
 
     const { rows } = await query(sql, { id });
@@ -107,90 +123,87 @@ export const obtenerPorId = async (event) => {
     return ok({ empleado: rows[0] });
   } catch (e) {
     console.error('Error obtener empleado:', e);
-    return bad(e.message);
+    return bad(`Error al obtener empleado: ${e.message}`);
   }
 };
 
-// ✅ Crear nuevo empleado
+// ✅ Crear empleado
 export const crear = async (event) => {
   try {
     const body = JSON.parse(event.body || '{}');
     const { 
       nombre, 
-      telefono, 
-      email, 
-      cargo, 
-      salario, 
-      id_instalacion 
+      tipo_empleado, 
+      id_instalacion, 
+      id_departamento 
     } = body;
-
-    // Validaciones
+    
     if (!nombre || !nombre.trim()) {
-      return bad('El nombre es requerido', 400);
+      return bad('El nombre es obligatorio', 400);
     }
 
-    if (!cargo || !cargo.trim()) {
-      return bad('El cargo es requerido', 400);
+    if (!tipo_empleado || !tipo_empleado.trim()) {
+      return bad('El tipo de empleado es obligatorio', 400);
     }
 
-    if (!salario || salario <= 0) {
-      return bad('El salario debe ser mayor a 0', 400);
-    }
-
-    // Verificar que la instalación existe si se especifica
+    // Verificar que la instalación existe si se proporciona
     if (id_instalacion) {
       const instalacionExists = await query(
-        `SELECT COUNT(*) as count FROM instalacion WHERE id_instalacion = :id_instalacion`,
-        { id_instalacion }
+        `SELECT COUNT(*) as count FROM instalacion WHERE id_instalacion = :id`,
+        { id: id_instalacion }
       );
 
       if (instalacionExists.rows[0]?.COUNT === 0) {
-        return bad('Instalación no encontrada', 404);
+        return bad('La instalación especificada no existe', 400);
       }
     }
 
-    // Crear persona primero
+    // Verificar que el departamento existe si se proporciona
+    if (id_departamento) {
+      const departamentoExists = await query(
+        `SELECT COUNT(*) as count FROM departamento WHERE id_departamento = :id`,
+        { id: id_departamento }
+      );
+
+      if (departamentoExists.rows[0]?.COUNT === 0) {
+        return bad('El departamento especificado no existe', 400);
+      }
+    }
+
+    // Primero crear la persona
     const personaSql = `
-      INSERT INTO persona (id_persona, nombre, telefono, email, tipo)
-      VALUES (seq_persona.NEXTVAL, :nombre, :telefono, :email, 'EMPLEADO')
+      INSERT INTO persona (id_persona, nombre, tipo)
+      VALUES (seq_persona.NEXTVAL, :nombre, 'EMPLEADO')
+      RETURNING id_persona INTO :id_persona
     `;
+    
+    const personaBinds = {
+      nombre: nombre.trim(),
+      id_persona: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+    };
 
-    await exec(personaSql, { 
-      nombre: nombre.trim(), 
-      telefono: telefono || null, 
-      email: email || null 
-    });
+    const personaResult = await exec(personaSql, personaBinds);
+    const idPersona = personaResult.outBinds.id_persona[0];
 
-    // Obtener el ID de la persona recién creada
-    const personaId = await query(`SELECT seq_persona.CURRVAL as id FROM dual`);
-    const idPersona = personaId.rows[0].ID;
-
-    // Crear empleado
+    // Luego crear el empleado
     const empleadoSql = `
-      INSERT INTO empleado (id_empleado, id_persona, cargo, salario, fecha_contratacion, id_instalacion)
-      VALUES (seq_empleado.NEXTVAL, :id_persona, :cargo, :salario, SYSDATE, :id_instalacion)
+      INSERT INTO empleado (id_persona, tipo_empleado, id_instalacion, id_departamento)
+      VALUES (:id_persona, :tipo_empleado, :id_instalacion, :id_departamento)
     `;
 
     await exec(empleadoSql, {
       id_persona: idPersona,
-      cargo: cargo.trim(),
-      salario,
-      id_instalacion: id_instalacion || null
+      tipo_empleado: tipo_empleado.trim(),
+      id_instalacion: id_instalacion || null,
+      id_departamento: id_departamento || null
     });
-
-    // Obtener el ID del empleado recién creado
-    const empleadoId = await query(`SELECT seq_empleado.CURRVAL as id FROM dual`);
-    const idEmpleado = empleadoId.rows[0].ID;
 
     return ok({
-      id_empleado: idEmpleado,
       id_persona: idPersona,
-      nombre,
-      cargo,
-      salario,
+      nombre: nombre.trim(),
+      tipo_empleado: tipo_empleado.trim(),
       message: 'Empleado creado exitosamente'
     });
-
   } catch (e) {
     console.error('Error crear empleado:', e);
     return bad(`Error al crear empleado: ${e.message}`);
@@ -204,22 +217,18 @@ export const actualizar = async (event) => {
     const body = JSON.parse(event.body || '{}');
     const { 
       nombre, 
-      telefono, 
-      email, 
-      cargo, 
-      salario, 
-      id_instalacion 
+      tipo_empleado, 
+      id_instalacion, 
+      id_departamento 
     } = body;
 
     if (!id || isNaN(id)) {
       return bad('ID de empleado inválido', 400);
     }
 
-    // Verificar que el empleado existe y obtener su id_persona
+    // Verificar que el empleado existe
     const empleadoActual = await query(
-      `SELECT e.id_persona, e.cargo, e.salario 
-       FROM empleado e 
-       WHERE e.id_empleado = :id`,
+      `SELECT e.*, p.nombre FROM empleado e JOIN persona p ON e.id_persona = p.id_persona WHERE e.id_persona = :id`,
       { id }
     );
 
@@ -227,76 +236,46 @@ export const actualizar = async (event) => {
       return bad('Empleado no encontrado', 404);
     }
 
-    const idPersona = empleadoActual.rows[0].ID_PERSONA;
-
-    // Actualizar datos de persona si se proporcionan
-    if (nombre || telefono !== undefined || email !== undefined) {
-      const updatePersona = [];
-      const personaBinds = { id_persona: idPersona };
-
-      if (nombre && nombre.trim()) {
-        updatePersona.push('nombre = :nombre');
-        personaBinds.nombre = nombre.trim();
-      }
-
-      if (telefono !== undefined) {
-        updatePersona.push('telefono = :telefono');
-        personaBinds.telefono = telefono || null;
-      }
-
-      if (email !== undefined) {
-        updatePersona.push('email = :email');
-        personaBinds.email = email || null;
-      }
-
-      if (updatePersona.length > 0) {
-        await exec(
-          `UPDATE persona SET ${updatePersona.join(', ')} WHERE id_persona = :id_persona`,
-          personaBinds
-        );
-      }
-    }
-
-    // Actualizar datos de empleado si se proporcionan
-    const updateEmpleado = [];
-    const empleadoBinds = { id: id };
-
-    if (cargo && cargo.trim()) {
-      updateEmpleado.push('cargo = :cargo');
-      empleadoBinds.cargo = cargo.trim();
-    }
-
-    if (salario && salario > 0) {
-      updateEmpleado.push('salario = :salario');
-      empleadoBinds.salario = salario;
-    }
-
-    if (id_instalacion !== undefined) {
-      // Verificar que la instalación existe si no es null
-      if (id_instalacion) {
-        const instalacionExists = await query(
-          `SELECT COUNT(*) as count FROM instalacion WHERE id_instalacion = :id_instalacion`,
-          { id_instalacion }
-        );
-
-        if (instalacionExists.rows[0]?.COUNT === 0) {
-          return bad('Instalación no encontrada', 404);
-        }
-      }
-
-      updateEmpleado.push('id_instalacion = :id_instalacion');
-      empleadoBinds.id_instalacion = id_instalacion || null;
-    }
-
-    if (updateEmpleado.length > 0) {
+    // Actualizar persona si se proporciona nombre
+    if (nombre && nombre.trim()) {
       await exec(
-        `UPDATE empleado SET ${updateEmpleado.join(', ')} WHERE id_empleado = :id`,
-        empleadoBinds
+        `UPDATE persona SET nombre = :nombre WHERE id_persona = :id`,
+        { nombre: nombre.trim(), id }
       );
     }
 
+    // Actualizar empleado
+    const updateFields = [];
+    const binds = { id };
+
+    if (tipo_empleado && tipo_empleado.trim()) {
+      updateFields.push('tipo_empleado = :tipo_empleado');
+      binds.tipo_empleado = tipo_empleado.trim();
+    }
+
+    if (id_instalacion !== undefined) {
+      updateFields.push('id_instalacion = :id_instalacion');
+      binds.id_instalacion = id_instalacion || null;
+    }
+
+    if (id_departamento !== undefined) {
+      updateFields.push('id_departamento = :id_departamento');
+      binds.id_departamento = id_departamento || null;
+    }
+
+    if (updateFields.length > 0) {
+      const result = await exec(
+        `UPDATE empleado SET ${updateFields.join(', ')} WHERE id_persona = :id`,
+        binds
+      );
+
+      if (result.rowsAffected === 0) {
+        return bad('No se pudo actualizar el empleado', 500);
+      }
+    }
+
     return ok({
-      id_empleado: id,
+      id_persona: id,
       message: 'Empleado actualizado exitosamente'
     });
 
@@ -315,9 +294,9 @@ export const eliminar = async (event) => {
       return bad('ID de empleado inválido', 400);
     }
 
-    // Verificar que el empleado existe y obtener su id_persona
+    // Verificar que el empleado existe
     const empleadoActual = await query(
-      `SELECT id_persona FROM empleado WHERE id_empleado = :id`,
+      `SELECT p.nombre FROM empleado e JOIN persona p ON e.id_persona = p.id_persona WHERE e.id_persona = :id`,
       { id }
     );
 
@@ -325,16 +304,31 @@ export const eliminar = async (event) => {
       return bad('Empleado no encontrado', 404);
     }
 
-    const idPersona = empleadoActual.rows[0].ID_PERSONA;
+    const nombreEmpleado = empleadoActual.rows[0].NOMBRE;
 
-    // Eliminar empleado primero (por la foreign key)
-    await exec(`DELETE FROM empleado WHERE id_empleado = :id`, { id });
+    // Verificar dependencias (auditorías, aprobaciones, etc.)
+    const dependencias = await query(
+      `SELECT COUNT(*) as count FROM auditoria WHERE id_auditor = :id`,
+      { id }
+    );
+
+    if (dependencias.rows[0]?.COUNT > 0) {
+      return bad('No se puede eliminar: el empleado tiene auditorías asociadas', 409);
+    }
+
+    // Eliminar empleado (esto también eliminará la persona debido a la FK)
+    const result = await exec(`DELETE FROM empleado WHERE id_persona = :id`, { id });
+
+    if (result.rowsAffected === 0) {
+      return bad('No se pudo eliminar el empleado', 500);
+    }
 
     // Eliminar persona
-    await exec(`DELETE FROM persona WHERE id_persona = :id_persona`, { id_persona: idPersona });
+    await exec(`DELETE FROM persona WHERE id_persona = :id`, { id });
 
     return ok({
-      id_empleado: id,
+      id_persona: id,
+      nombre: nombreEmpleado,
       message: 'Empleado eliminado exitosamente'
     });
 
@@ -345,53 +339,44 @@ export const eliminar = async (event) => {
 };
 
 // ✅ Obtener estadísticas de empleados
-export const estadisticas = async () => {
+export const obtenerEstadisticas = async () => {
   try {
-    const [resumenGeneral, porInstalacion, porCargo] = await Promise.all([
-      // Resumen general
-      query(`
-        SELECT 
-          COUNT(*) as total_empleados,
-          AVG(salario) as salario_promedio,
-          MIN(salario) as salario_minimo,
-          MAX(salario) as salario_maximo,
-          COUNT(DISTINCT id_instalacion) as instalaciones_con_empleados
-        FROM empleado
-        WHERE salario IS NOT NULL
-      `),
+    const sql = `
+      SELECT 
+        COUNT(*) as total_empleados,
+        COUNT(DISTINCT e.tipo_empleado) as tipos_empleado,
+        COUNT(DISTINCT e.id_instalacion) as instalaciones_con_empleados,
+        COUNT(DISTINCT e.id_departamento) as departamentos_con_empleados
+      FROM empleado e
+    `;
 
-      // Por instalación
-      query(`
-        SELECT 
-          i.nombre as instalacion,
-          COUNT(e.id_empleado) as cantidad_empleados,
-          AVG(e.salario) as salario_promedio
-        FROM instalacion i
-        LEFT JOIN empleado e ON i.id_instalacion = e.id_instalacion
-        GROUP BY i.id_instalacion, i.nombre
-        ORDER BY cantidad_empleados DESC
-      `),
+    const { rows } = await query(sql);
+    const estadisticas = rows[0];
 
-      // Por cargo
-      query(`
-        SELECT 
-          cargo,
-          COUNT(*) as cantidad,
-          AVG(salario) as salario_promedio
-        FROM empleado
-        GROUP BY cargo
-        ORDER BY cantidad DESC
-      `)
-    ]);
+    // Obtener distribución por tipo
+    const tiposSql = `
+      SELECT 
+        tipo_empleado,
+        COUNT(*) as cantidad
+      FROM empleado
+      WHERE tipo_empleado IS NOT NULL
+      GROUP BY tipo_empleado
+      ORDER BY cantidad DESC
+    `;
+
+    const tiposResult = await query(tiposSql);
 
     return ok({
-      resumen: resumenGeneral.rows[0] || {},
-      porInstalacion: porInstalacion.rows || [],
-      porCargo: porCargo.rows || []
+      estadisticas: {
+        totalEmpleados: estadisticas.TOTAL_EMPLEADOS || 0,
+        tiposEmpleado: estadisticas.TIPOS_EMPLEADO || 0,
+        instalacionesConEmpleados: estadisticas.INSTALACIONES_CON_EMPLEADOS || 0,
+        departamentosConEmpleados: estadisticas.DEPARTAMENTOS_CON_EMPLEADOS || 0
+      },
+      distribucionPorTipo: tiposResult.rows
     });
-
   } catch (e) {
-    console.error('Error obtener estadísticas de empleados:', e);
-    return bad(e.message);
+    console.error('Error obtener estadísticas empleados:', e);
+    return bad(`Error al obtener estadísticas: ${e.message}`);
   }
 };

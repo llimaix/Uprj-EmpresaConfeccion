@@ -1,5 +1,6 @@
 import { query, exec } from "../db.js";
 import { ok, bad } from "../util.js";
+import oracledb from 'oracledb';
 
 // ✅ Listar personas con filtros por tipo
 export const listar = async (event) => {
@@ -16,8 +17,6 @@ export const listar = async (event) => {
       SELECT 
         p.id_persona,
         p.nombre,
-        p.telefono,
-        p.email,
         p.tipo
       FROM persona p
     `;
@@ -26,7 +25,7 @@ export const listar = async (event) => {
     let whereConditions = [];
 
     if (search && search.trim()) {
-      whereConditions.push(`(UPPER(p.nombre) LIKE UPPER(:search) OR UPPER(p.email) LIKE UPPER(:search))`);
+      whereConditions.push(`UPPER(p.nombre) LIKE UPPER(:search)`);
       binds.search = `%${search.trim()}%`;
     }
 
@@ -40,7 +39,7 @@ export const listar = async (event) => {
     }
 
     // Validar campo de ordenamiento
-    const validSortFields = ['nombre', 'email', 'tipo'];
+    const validSortFields = ['nombre', 'tipo', 'id_persona'];
     const sortField = validSortFields.includes(sortBy) ? sortBy : 'nombre';
     
     sql += ` ORDER BY ${sortField} ${sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC'}`;
@@ -49,22 +48,21 @@ export const listar = async (event) => {
     
     // Calcular estadísticas por tipo
     const estadisticasPorTipo = rows.reduce((acc, persona) => {
-      const tipoPersona = persona.TIPO || 'SIN_TIPO';
-      acc[tipoPersona] = (acc[tipoPersona] || 0) + 1;
+      const tipo = persona.TIPO || 'SIN_TIPO';
+      acc[tipo] = (acc[tipo] || 0) + 1;
       return acc;
     }, {});
 
-    return ok({ 
-      rows,
-      statistics: {
-        total: rows.length,
-        porTipo: estadisticasPorTipo
-      },
-      filters: { search, tipo, sortBy, sortOrder }
+    return ok({
+      personas: rows,
+      total: rows.length,
+      estadisticas: estadisticasPorTipo,
+      filtros: { search, tipo }
     });
+
   } catch (e) {
-    console.error("Error listar personas:", e);
-    return bad(`Error al listar personas: ${e.message}`);
+    console.error('Error al listar personas:', e);
+    return bad(`Error al cargar personas: ${e.message}`);
   }
 };
 
@@ -81,8 +79,6 @@ export const obtenerPorId = async (event) => {
       SELECT 
         p.id_persona,
         p.nombre,
-        p.telefono,
-        p.email,
         p.tipo
       FROM persona p
       WHERE p.id_persona = :id
@@ -94,35 +90,43 @@ export const obtenerPorId = async (event) => {
       return bad('Persona no encontrada', 404);
     }
 
-    // Si es cliente, obtener sus órdenes
     const persona = rows[0];
-    if (persona.TIPO === 'CLIENTE') {
-      const ordenes = await query(`
-        SELECT 
-          o.id_orden,
-          o.estado,
-          o.fecha_orden
-        FROM orden_compra o
-        WHERE o.id_cliente = :id
-        ORDER BY o.fecha_orden DESC
-      `, { id });
 
-      persona.ordenes = ordenes.rows || [];
+    // Si es cliente, obtener sus órdenes
+    if (persona.TIPO === 'CLIENTE') {
+      try {
+        const ordenes = await query(`
+          SELECT 
+            o.id_orden,
+            o.estado
+          FROM orden_compra o
+          WHERE o.id_cliente = :id
+          ORDER BY o.id_orden DESC
+        `, { id });
+
+        persona.ordenes = ordenes.rows || [];
+      } catch (e) {
+        console.log('No se pudieron cargar órdenes:', e.message);
+        persona.ordenes = [];
+      }
     }
 
     return ok({ persona });
   } catch (e) {
     console.error('Error obtener persona:', e);
-    return bad(e.message);
+    return bad(`Error al obtener persona: ${e.message}`);
   }
 };
 
+// ✅ Crear persona
 export const crear = async (event) => {
-  try{
-    const body = JSON.parse(event.body || '{}')
-    const { nombre, telefono, email, tipo = 'CLIENTE' } = body
+  try {
+    const body = JSON.parse(event.body || '{}');
+    const { nombre, tipo = 'CLIENTE' } = body;
     
-    if(!nombre || !nombre.trim()) return bad('El nombre es obligatorio', 400)
+    if (!nombre || !nombre.trim()) {
+      return bad('El nombre es obligatorio', 400);
+    }
 
     // Validar tipo
     const tiposValidos = ['CLIENTE', 'PROVEEDOR', 'EMPLEADO'];
@@ -130,58 +134,39 @@ export const crear = async (event) => {
       return bad(`Tipo inválido. Tipos válidos: ${tiposValidos.join(', ')}`, 400);
     }
 
-    // Verificar email único si se proporciona
-    if (email && email.trim()) {
-      const emailExists = await query(
-        `SELECT COUNT(*) as count FROM persona WHERE UPPER(email) = UPPER(:email)`,
-        { email: email.trim() }
-      );
-
-      if (emailExists.rows[0]?.COUNT > 0) {
-        return bad('Ya existe una persona con ese email', 409);
-      }
-    }
-
-    // Usando la secuencia del esquema para el PK
     const sql = `
-      INSERT INTO persona (id_persona, nombre, telefono, email, tipo)
-      VALUES (seq_persona.NEXTVAL, :nombre, :telefono, :email, :tipo)
-    `
+      INSERT INTO persona (id_persona, nombre, tipo)
+      VALUES (seq_persona.NEXTVAL, :nombre, :tipo)
+      RETURNING id_persona INTO :id_persona
+    `;
     
-    await exec(sql, { 
-      nombre: nombre.trim(), 
-      telefono: telefono || null, 
-      email: email?.trim() || null,
-      tipo: tipo.toUpperCase()
-    });
+    const binds = {
+      nombre: nombre.trim(),
+      tipo: tipo.toUpperCase(),
+      id_persona: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+    };
 
-    // Obtener el ID de la persona recién creada
-    const personaId = await query(`SELECT seq_persona.CURRVAL as id FROM dual`);
-    const idPersona = personaId.rows[0].ID;
+    const result = await exec(sql, binds);
+    const idPersona = result.outBinds.id_persona[0];
 
     return ok({
       id_persona: idPersona,
-      nombre,
+      nombre: nombre.trim(),
       tipo: tipo.toUpperCase(),
       message: 'Persona creada exitosamente'
     });
-  }catch(e){
-    console.error(e)
-    return bad(e.message)
+  } catch (e) {
+    console.error('Error crear persona:', e);
+    return bad(`Error al crear persona: ${e.message}`);
   }
-}
+};
 
 // ✅ Actualizar persona
 export const actualizar = async (event) => {
   try {
     const id = parseInt(event.pathParameters?.id);
     const body = JSON.parse(event.body || '{}');
-    const { 
-      nombre, 
-      telefono, 
-      email, 
-      tipo 
-    } = body;
+    const { nombre, tipo } = body;
 
     if (!id || isNaN(id)) {
       return bad('ID de persona inválido', 400);
@@ -189,24 +174,12 @@ export const actualizar = async (event) => {
 
     // Verificar que la persona existe
     const personaActual = await query(
-      `SELECT tipo FROM persona WHERE id_persona = :id`,
+      `SELECT nombre, tipo FROM persona WHERE id_persona = :id`,
       { id }
     );
 
     if (personaActual.rows.length === 0) {
       return bad('Persona no encontrada', 404);
-    }
-
-    // Verificar email único si se está actualizando
-    if (email && email.trim()) {
-      const emailExists = await query(
-        `SELECT COUNT(*) as count FROM persona WHERE UPPER(email) = UPPER(:email) AND id_persona != :id`,
-        { email: email.trim(), id }
-      );
-
-      if (emailExists.rows[0]?.COUNT > 0) {
-        return bad('Ya existe otra persona con ese email', 409);
-      }
     }
 
     // Construir la actualización dinámicamente
@@ -216,16 +189,6 @@ export const actualizar = async (event) => {
     if (nombre && nombre.trim()) {
       updateFields.push('nombre = :nombre');
       binds.nombre = nombre.trim();
-    }
-
-    if (telefono !== undefined) {
-      updateFields.push('telefono = :telefono');
-      binds.telefono = telefono || null;
-    }
-
-    if (email !== undefined) {
-      updateFields.push('email = :email');
-      binds.email = email?.trim() || null;
     }
 
     if (tipo && tipo.trim()) {
@@ -241,10 +204,14 @@ export const actualizar = async (event) => {
       return bad('No hay campos para actualizar', 400);
     }
 
-    await exec(
+    const result = await exec(
       `UPDATE persona SET ${updateFields.join(', ')} WHERE id_persona = :id`,
       binds
     );
+
+    if (result.rowsAffected === 0) {
+      return bad('No se pudo actualizar la persona', 500);
+    }
 
     return ok({
       id_persona: id,
@@ -268,7 +235,7 @@ export const eliminar = async (event) => {
 
     // Verificar que la persona existe
     const personaActual = await query(
-      `SELECT tipo FROM persona WHERE id_persona = :id`,
+      `SELECT nombre, tipo FROM persona WHERE id_persona = :id`,
       { id }
     );
 
@@ -276,10 +243,10 @@ export const eliminar = async (event) => {
       return bad('Persona no encontrada', 404);
     }
 
-    // Verificar dependencias antes de eliminar
-    const tipoPersona = personaActual.rows[0].TIPO;
+    const { NOMBRE, TIPO } = personaActual.rows[0];
 
-    if (tipoPersona === 'CLIENTE') {
+    // Verificar dependencias antes de eliminar
+    if (TIPO === 'CLIENTE') {
       const tieneOrdenes = await query(
         `SELECT COUNT(*) as count FROM orden_compra WHERE id_cliente = :id`,
         { id }
@@ -290,7 +257,7 @@ export const eliminar = async (event) => {
       }
     }
 
-    if (tipoPersona === 'EMPLEADO') {
+    if (TIPO === 'EMPLEADO') {
       const esEmpleado = await query(
         `SELECT COUNT(*) as count FROM empleado WHERE id_persona = :id`,
         { id }
@@ -301,11 +268,15 @@ export const eliminar = async (event) => {
       }
     }
 
-    // Eliminar persona
-    await exec(`DELETE FROM persona WHERE id_persona = :id`, { id });
+    const result = await exec(`DELETE FROM persona WHERE id_persona = :id`, { id });
+
+    if (result.rowsAffected === 0) {
+      return bad('No se pudo eliminar la persona', 500);
+    }
 
     return ok({
       id_persona: id,
+      nombre: NOMBRE,
       message: 'Persona eliminada exitosamente'
     });
 
@@ -332,6 +303,6 @@ export const obtenerTipos = async () => {
     return ok({ tipos: rows });
   } catch (e) {
     console.error('Error obtener tipos de personas:', e);
-    return bad(e.message);
+    return bad(`Error al obtener tipos: ${e.message}`);
   }
 };
