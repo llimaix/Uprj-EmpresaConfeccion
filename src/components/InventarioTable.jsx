@@ -86,14 +86,12 @@ export default function InventarioTable({ data = [], onRefresh }) {
                   Cantidad {getSortIcon('CANTIDAD')}
                 </th>
                 <th>Estado</th>
-                <th>Valor Estimado</th>
               </tr>
             </thead>
             <tbody>
               {sortedData.map((item, index) => {
                 const cantidad = item.CANTIDAD || 0;
                 const status = getStockStatus(cantidad);
-                const valorEstimado = cantidad * 150; // Precio promedio estimado
                 
                 return (
                   <tr key={item.ID_INVENTARIO || index}>
@@ -128,11 +126,6 @@ export default function InventarioTable({ data = [], onRefresh }) {
                         {status.text}
                       </span>
                     </td>
-                    <td>
-                      <strong style={{ color: '#10b981' }}>
-                        ${valorEstimado.toLocaleString()}
-                      </strong>
-                    </td>
                   </tr>
                 );
               })}
@@ -155,11 +148,6 @@ export default function InventarioTable({ data = [], onRefresh }) {
             </div>
             <div>
               <strong>Total unidades: {data.reduce((sum, item) => sum + (item.CANTIDAD || 0), 0).toLocaleString()}</strong>
-            </div>
-            <div>
-              <strong style={{ color: '#10b981' }}>
-                Valor total: ${data.reduce((sum, item) => sum + ((item.CANTIDAD || 0) * 150), 0).toLocaleString()}
-              </strong>
             </div>
           </div>
         </div>
