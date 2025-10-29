@@ -191,6 +191,13 @@ functions:
           path: /personas/tipos
           method: GET
 
+  personas-debug:
+    handler: src/handlers/personas.debug
+    events:
+      - httpApi:
+          path: /personas/debug
+          method: GET
+
   # =========================
   # Empleados
   # =========================

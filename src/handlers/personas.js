@@ -306,3 +306,31 @@ export const obtenerTipos = async () => {
     return bad(`Error al obtener tipos: ${e.message}`);
   }
 };
+
+// ✅ DEBUG: Consulta directa para verificar datos
+export const debug = async () => {
+  try {
+    console.log('🔍 Ejecutando consulta debug de personas...');
+    
+    // Consulta simple de conteo
+    const countSql = `SELECT COUNT(*) as total FROM persona`;
+    const countResult = await query(countSql);
+    
+    // Consulta de todas las personas sin filtros
+    const allSql = `SELECT id_persona, nombre, tipo FROM persona ORDER BY id_persona`;
+    const allResult = await query(allSql);
+    
+    console.log('Total personas en DB:', countResult.rows[0]);
+    console.log('Personas encontradas:', allResult.rows.length);
+    
+    return ok({
+      totalEnDB: countResult.rows[0]?.TOTAL || 0,
+      personas: allResult.rows,
+      totalEncontradas: allResult.rows.length,
+      mensaje: 'Consulta debug ejecutada correctamente'
+    });
+  } catch (e) {
+    console.error('Error en debug personas:', e);
+    return bad(`Error en debug: ${e.message}`);
+  }
+};
